@@ -1,6 +1,6 @@
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
-const Category = require("../models/Cartegory");
+const Category = require("../models/Category");
 
 exports.getUserCategories = async (req, res, next) => {
   try {
@@ -42,11 +42,14 @@ exports.deleteCategory = async (req, res, next) => {
         .status(403)
         .send({ message: "This category already has been in a transactions!" });
     } else {
-      const category = await Category.deleteById(categoryId);
+      const category = await Category.deleteOne({
+        _id: categoryId,
+        user: userId,
+      });
       if (category) {
         return res.status(200).send({ message: "Deleted Category!" });
       } else {
-        return res.status(422).send({ message: "Category Id is not valid!" });
+        return res.status(422).send({ message: "Invalid User or Category!" });
       }
     }
   } catch (err) {

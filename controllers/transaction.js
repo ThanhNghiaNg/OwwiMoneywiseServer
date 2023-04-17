@@ -29,16 +29,37 @@ exports.addTransaction = async (req, res, next) => {
   }
 };
 
+exports.deleteTransaction = async (req, res, next) => {
+  try {
+    const userId = req.session.user._id;
+    const { transactionId } = req.body;
+    const transaction = await Transaction.deleteOne({
+      user: userId,
+      _id: transactionId,
+    });
+    if (transaction) {
+      return res.status(200).send({ message: "Deleted Transactions!" });
+    } else {
+      return res.send(401).send({ message: "Invalid User or Transaction!" });
+    }
+  } catch (err) {
+    console.log(err);
+    return res.send({ message: err.message });
+  }
+};
+
 exports.updateTransaction = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const { type, transactionId, categoryId, amount, description } = req.body;
+    const { type, transactionId, categoryId, partnerId, amount, description } =
+      req.body;
     const newTransaction = await Transaction.updateOne(
       { _id: transactionId },
       {
         $set: {
           type,
           user: userId,
+          partner: partnerId,
           category: categoryId,
           amount,
           description,

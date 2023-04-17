@@ -30,7 +30,7 @@ router.post(
 router.post(
   "/register",
   [
-    // body("email", "Invalid Email!").isEmail(),
+    body("email", "Invalid Email!").isEmail(),
     body("username", "Username must have at least 6 characters").isLength({
       min: 6,
     }),

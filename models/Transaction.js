@@ -9,6 +9,7 @@ const transactionSchema = Schema(
       required: true,
     },
     user: { type: Schema.Types.ObjectId, require: true, ref: "User" },
+    partner: { type: Schema.Types.ObjectId, require: true, ref: "Partner" },
     category: {
       type: Schema.Types.ObjectId,
       require: true,
@@ -20,6 +21,10 @@ const transactionSchema = Schema(
     },
     description: {
       type: String,
+      required: true,
+    },
+    date: {
+      type: Date,
       required: true,
     },
   },
