@@ -41,9 +41,8 @@ exports.postLogin = (req, res, next) => {
       res.status(500).send({ message: err.message });
     });
 };
-exports.postSignup = (req, res, next) => {
-  const { username, password, fullName, email, phone, address} =
-    req.body;
+exports.postRegister = (req, res, next) => {
+  const { username, password, fullName, email, phone, address } = req.body;
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
@@ -63,7 +62,7 @@ exports.postSignup = (req, res, next) => {
         isAdmin: false,
       });
       return newUser.save().then((user) => {
-        return res.status(201).send({ message: "Sign-up Successfully!" });
+        return res.status(201).send({ message: "Register Successfully!" });
       });
     })
     .catch((err) => {

@@ -8,7 +8,8 @@ const transactionSchema = Schema(
       enum: ["income", "expense"],
       required: true,
     },
-    categories: {
+    user: { type: Schema.Types.ObjectId, require: true, ref: "User" },
+    category: {
       type: Schema.Types.ObjectId,
       require: true,
       ref: "Category",
