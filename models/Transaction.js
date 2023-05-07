@@ -4,9 +4,9 @@ const Schema = mongoose.Schema;
 const transactionSchema = Schema(
   {
     type: {
-      type: String,
-      enum: ["income", "expense"],
-      required: true,
+      type: Schema.Types.ObjectId,
+      require: true,
+      ref: "Type",
     },
     user: { type: Schema.Types.ObjectId, require: true, ref: "User" },
     partner: { type: Schema.Types.ObjectId, require: true, ref: "Partner" },
@@ -26,6 +26,10 @@ const transactionSchema = Schema(
     date: {
       type: Date,
       required: true,
+    },
+    isFinished: {
+      type: Boolean,
+      require: true,
     },
   },
   { timestamp: true }

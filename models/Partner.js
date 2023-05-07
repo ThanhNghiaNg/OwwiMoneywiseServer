@@ -11,10 +11,7 @@ const partnerSchema = Schema({
     type: String,
     required: false,
   },
-  age: {
-    type: Number,
-    required: false,
-  },
+  type: { type: Schema.Types.ObjectId, required: true, ref: "Type" },
 });
 
 module.exports = mongoose.model("Partner", partnerSchema);
