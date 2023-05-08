@@ -31,12 +31,14 @@ app.use(
 
 app.use(
   session({
-    secret: "my secret",
-    resave: false,
+    secret: "SESSION_SECRET",
     saveUninitialized: false,
+    resave: false,
     store: store,
     cookie: {
-      maxAge: 1000 * 3600 * 24, // 1 day
+      // sameSite: "none", // UNCOMMENT FOR DEPLOY
+      // secure: true, // UNCOMMENT FOR DEPLOY
+      maxAge: 1000 * 60 * 60 * 24, // One day in milliseconds
     },
   })
 );

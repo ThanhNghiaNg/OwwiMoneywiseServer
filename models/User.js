@@ -9,7 +9,6 @@ const userSchema = Schema(
     email: { type: String, require: true },
     phone: { type: String, require: true },
     address: { type: String, require: false },
-    categories: [{ type: String, require: true }],
     isAdmin: { type: Boolean, require: true },
   },
   { timestamp: true }

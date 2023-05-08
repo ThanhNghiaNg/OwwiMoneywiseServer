@@ -6,7 +6,6 @@ exports.getUserTransactions = async (req, res, next) => {
     const transactions = await Transaction.find({ user: userId });
     return res.send(transactions);
   } catch (err) {
-    console.log(err);
     return res.send({ message: err.message });
   }
 };

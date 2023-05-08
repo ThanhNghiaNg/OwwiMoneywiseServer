@@ -71,6 +71,7 @@ exports.postRegister = (req, res, next) => {
 };
 
 exports.postLogout = (req, res, next) => {
+  console.log("logout");
   if (req.session) {
     req.session.destroy((err) => {
       if (err) {
