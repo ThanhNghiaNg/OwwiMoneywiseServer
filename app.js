@@ -7,9 +7,9 @@ const User = require("./models/User");
 const express = require("express");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
-const categoryRoutes = require("./routes/category")
-const transactionRoutes = require("./routes/transaction")
-const partnerRoutes = require("./routes/partner")
+const categoryRoutes = require("./routes/category");
+const transactionRoutes = require("./routes/transaction");
+const partnerRoutes = require("./routes/partner");
 
 require("dotenv").config();
 
@@ -84,10 +84,9 @@ app.use((req, res, next) => {
 app.use(authRoutes);
 
 app.use("/user", userRoutes);
-app.use("/category", categoryRoutes)
+app.use("/category", categoryRoutes);
 app.use("/transaction", transactionRoutes);
-app.use("/partner", partnerRoutes)
-
+app.use("/partner", partnerRoutes);
 
 mongoose.connect(process.env.MONGO_URI).then(() => {
   app.listen(process.env.PORT || 5000);
