@@ -3,7 +3,19 @@ const Transaction = require("../models/Transaction");
 exports.getUserTransactions = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const transactions = await Transaction.find({ user: userId });
+    const transactions = await Transaction.find({ user: userId })
+      .populate({
+        path: "type",
+        select: "name",
+      })
+      .populate({
+        path: "partner",
+        select: "name",
+      })
+      .populate({
+        path: "category",
+        select: "name",
+      }).select('-user');
     return res.send(transactions);
   } catch (err) {
     return res.send({ message: err.message });
@@ -12,13 +24,18 @@ exports.getUserTransactions = async (req, res, next) => {
 
 exports.addTransaction = async (req, res, next) => {
   try {
-    const { type, userId, categoryId, amount, description } = req.body;
+    const userId = req.session.user._id;
+    const { type, category, partner, amount, description, date, isFinished } =
+      req.body;
     const newTransaction = await new Transaction({
       type,
       user: userId,
-      category: categoryId,
-      amount,
+      category: category,
+      partner,
+      amount: amount,
       description,
+      isFinished,
+      date: new Date(date),
     });
     await newTransaction.save();
     return res.status(201).send({ message: "Created Transactions!" });

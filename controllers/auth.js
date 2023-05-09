@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Type = require("../models/Type");
 const bcrypt = require("bcryptjs");
 const { validationResult } = require("express-validator/check");
 
@@ -12,6 +13,7 @@ exports.getAuthenticated = (req, res, next) => {
 
 exports.postLogin = (req, res, next) => {
   const { username, password, role } = req.body;
+  console.log("Login with username: ", username);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).send({ message: errors.array()[0].msg });
@@ -61,7 +63,11 @@ exports.postRegister = (req, res, next) => {
         address,
         isAdmin: false,
       });
-      return newUser.save().then((user) => {
+      return newUser.save().then(async (user) => {
+        const incomeType = new Type({ name: "Income", user: user._id });
+        const outcomType = new Type({ name: "Outcome", user: user._id });
+        await incomeType.save();
+        await outcomType.save();
         return res.status(201).send({ message: "Register Successfully!" });
       });
     })

@@ -5,7 +5,11 @@ const Category = require("../models/Category");
 exports.getUserCategories = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const categories = await Category.find({ user: userId });
+    const typeId = req.query.typeId || "";
+    const categories = await Category.find({
+      user: userId,
+      ...(typeId ? { type: typeId } : {}),
+    });
     return res.send(categories);
   } catch (err) {
     console.log(err);
@@ -17,9 +21,11 @@ exports.addCategory = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
     const categoryName = req.body.name;
+    const categoryType = req.body.type;
     const newCategory = await new Category({
       name: categoryName,
       user: userId,
+      type: categoryType,
     });
     await newCategory.save();
     return res.status(201).send({ message: "Created New Category!" });

@@ -5,7 +5,11 @@ const Partner = require("../models/Partner");
 exports.getUserPartners = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const partners = await Partner.find({ user: userId });
+    const typeId = req.query.typeId || "";
+    const partners = await Partner.find({
+      user: userId,
+      ...(typeId ? { type: typeId } : {}),
+    });
     return res.send(partners);
   } catch (err) {
     console.log(err);
@@ -17,13 +21,13 @@ exports.addPartner = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
     const partnerName = req.body.name;
-    const age = req.body.age;
     const address = req.body.address;
+    const type = req.body.type;
     const newPartner = await new Partner({
       name: partnerName,
       user: userId,
-      age,
       address,
+      type,
     });
     await newPartner.save();
     return res.status(201).send({ message: "Created New Partner!" });
@@ -44,7 +48,10 @@ exports.deletePartner = async (req, res, next) => {
     if (transactions) {
       return res
         .status(403)
-        .send({ message: "This Partner already has been in a transactions! You should only rename the partner!" });
+        .send({
+          message:
+            "This Partner already has been in a transactions! You should only rename the partner!",
+        });
     } else {
       const partner = await Partner.deleteById(partnerId);
       if (partner) {
