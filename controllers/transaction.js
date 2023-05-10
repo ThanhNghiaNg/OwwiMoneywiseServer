@@ -1,4 +1,5 @@
 const Transaction = require("../models/Transaction");
+const Type = require("../models/Type");
 
 exports.getUserTransactions = async (req, res, next) => {
   try {
@@ -15,7 +16,9 @@ exports.getUserTransactions = async (req, res, next) => {
       .populate({
         path: "category",
         select: "name",
-      }).select('-user');
+      })
+      .select("-user -__v")
+      .sort({ date: -1 });
     return res.send(transactions);
   } catch (err) {
     return res.send({ message: err.message });
@@ -88,4 +91,47 @@ exports.updateTransaction = async (req, res, next) => {
     console.log(err);
     return res.send({ message: err.message });
   }
+};
+
+exports.getStatisticOutcome = async (req, res, next) => {
+  const currentDate = new Date();
+
+  const monthTransaction = await Transaction.find({
+    date: {
+      $gte: currentDate.setDate(1), // Start date of month
+      $lte: new Date().setMonth(currentDate.getMonth() + 1, 0), // End date of month
+    },
+  })
+    .populate({
+      path: "type",
+      select: "name",
+    })
+    .populate({
+      path: "partner",
+      select: "name",
+    })
+    .populate({
+      path: "category",
+      select: "name",
+    })
+    .select("-user -__v");
+  const allTypes = await Type.find({});
+
+  const initResult = allTypes
+    .map((i) => i.name)
+    .reduce((result, key) => {
+      result[key] = {};
+      return result;
+    }, {});
+
+  const statisticByCategory = monthTransaction.reduce(
+    (result, transaction, i) => {
+      result[transaction.type.name][transaction.category.name] =
+        (result[transaction.type.name][transaction.category.name] || 0) +
+        transaction.amount;
+      return result;
+    },
+    { ...initResult }
+  );
+  return res.send(statisticByCategory);
 };
