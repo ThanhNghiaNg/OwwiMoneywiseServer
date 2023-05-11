@@ -27,7 +27,7 @@ const transactionSchema = Schema(
       type: Date,
       required: true,
     },
-    isFinished: {
+    skipped: {
       type: Boolean,
       require: true,
     },

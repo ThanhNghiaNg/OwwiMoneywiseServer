@@ -10,8 +10,11 @@ const userRoutes = require("./routes/user");
 const categoryRoutes = require("./routes/category");
 const transactionRoutes = require("./routes/transaction");
 const partnerRoutes = require("./routes/partner");
+const Transaction = require("./models/Transaction");
 
 require("dotenv").config();
+
+console.log(process.env.MONGO_URI);
 
 const store = new MongoDBStore({
   uri: process.env.MONGO_URI,
@@ -38,7 +41,7 @@ app.use(
     cookie: {
       // sameSite: "none", // UNCOMMENT FOR DEPLOY
       // secure: true, // UNCOMMENT FOR DEPLOY
-      maxAge: 1000 * 60 * 60 * 24, // One day in milliseconds
+      maxAge: 10000 * 60 * 60 * 24, // One day in milliseconds
     },
   })
 );
@@ -66,7 +69,10 @@ app.use(
 //   })
 // );
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
+  console.log("Update");
+  await Transaction.updateMany({}, { $set: { skipped: false } });
+
   if (!req.session.user) {
     return next();
   }

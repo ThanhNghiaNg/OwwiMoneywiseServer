@@ -101,6 +101,7 @@ exports.getStatisticOutcome = async (req, res, next) => {
       $gte: currentDate.setDate(1), // Start date of month
       $lte: new Date().setMonth(currentDate.getMonth() + 1, 0), // End date of month
     },
+    skipped: false,
   })
     .populate({
       path: "type",
