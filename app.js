@@ -70,9 +70,6 @@ app.use(
 // );
 
 app.use(async (req, res, next) => {
-  console.log("Update");
-  await Transaction.updateMany({}, { $set: { skipped: false } });
-
   if (!req.session.user) {
     return next();
   }

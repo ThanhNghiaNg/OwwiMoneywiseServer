@@ -25,6 +25,31 @@ exports.getUserTransactions = async (req, res, next) => {
   }
 };
 
+exports.getUserTransactionById = async (req, res, next) => {
+  try {
+    const userId = req.session.user._id;
+    const id = req.params.id
+    const transactions = await Transaction.find({ user: userId, _id: id })
+      .populate({
+        path: "type",
+        select: "name",
+      })
+      .populate({
+        path: "partner",
+        select: "name",
+      })
+      .populate({
+        path: "category",
+        select: "name",
+      })
+      .select("-user -__v")
+      .sort({ date: -1 });
+    return res.send(transactions);
+  } catch (err) {
+    return res.send({ message: err.message });
+  }
+};
+
 exports.addTransaction = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
