@@ -28,7 +28,7 @@ exports.getUserTransactions = async (req, res, next) => {
 exports.getUserTransactionById = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const id = req.params.id
+    const id = req.params.id;
     const transactions = await Transaction.find({ user: userId, _id: id })
       .populate({
         path: "type",
@@ -53,7 +53,7 @@ exports.getUserTransactionById = async (req, res, next) => {
 exports.addTransaction = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const { type, category, partner, amount, description, date, isFinished } =
+    const { type, category, partner, amount, description, date, skipped } =
       req.body;
     const newTransaction = await new Transaction({
       type,
@@ -62,7 +62,7 @@ exports.addTransaction = async (req, res, next) => {
       partner,
       amount: amount,
       description,
-      isFinished,
+      skipped,
       date: new Date(date),
     });
     await newTransaction.save();
@@ -94,19 +94,20 @@ exports.deleteTransaction = async (req, res, next) => {
 
 exports.updateTransaction = async (req, res, next) => {
   try {
-    const userId = req.session.user._id;
-    const { type, transactionId, categoryId, partnerId, amount, description } =
+    const transactionId = req.params.id;
+    const { type, category, partner, amount, description, date, skipped } =
       req.body;
     const newTransaction = await Transaction.updateOne(
       { _id: transactionId },
       {
         $set: {
           type,
-          user: userId,
-          partner: partnerId,
-          category: categoryId,
+          category,
+          partner,
           amount,
           description,
+          date,
+          skipped,
         },
       }
     );

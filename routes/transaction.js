@@ -11,6 +11,6 @@ router.post("/create", isAuthUser, transactionControllers.addTransaction);
 
 router.delete("/remove", isAuthUser, transactionControllers.deleteTransaction);
 
-router.put("/update", isAuthUser, transactionControllers.updateTransaction);
+router.put("/update/:id", isAuthUser, transactionControllers.updateTransaction);
 
 module.exports = router;
