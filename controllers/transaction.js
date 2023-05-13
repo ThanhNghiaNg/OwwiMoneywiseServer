@@ -111,8 +111,7 @@ exports.updateTransaction = async (req, res, next) => {
         },
       }
     );
-    await newTransaction.save();
-    return res.status(201).send({ message: "Created Transactions!" });
+    return res.status(201).send({ message: "Updated Transactions!" });
   } catch (err) {
     console.log(err);
     return res.send({ message: err.message });
