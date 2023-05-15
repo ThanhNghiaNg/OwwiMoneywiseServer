@@ -28,6 +28,7 @@ const store = new MongoDBStore({
 const app = express();
 app.use(express.static(__dirname));
 app.use(bodyParser.json());
+app.set("trust proxy", 1);
 // // DEVELOP
 // app.use(
 //   cors({
