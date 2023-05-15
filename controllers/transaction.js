@@ -119,45 +119,56 @@ exports.updateTransaction = async (req, res, next) => {
 };
 
 exports.getStatisticOutcome = async (req, res, next) => {
-  const currentDate = new Date();
-
-  const monthTransaction = await Transaction.find({
-    date: {
-      $gte: currentDate.setDate(1), // Start date of month
-      $lte: new Date().setMonth(currentDate.getMonth() + 1, 0), // End date of month
-    },
-    skipped: false,
-  })
-    .populate({
-      path: "type",
-      select: "name",
+  try {
+    const currentDate = new Date();
+    const monthTransaction = await Transaction.find({
+      date: {
+        $gte: currentDate.setDate(1), // Start date of month
+        $lte: new Date().setMonth(currentDate.getMonth() + 1, 0), // End date of month
+      },
+      skipped: false,
     })
-    .populate({
-      path: "partner",
-      select: "name",
-    })
-    .populate({
-      path: "category",
-      select: "name",
-    })
-    .select("-user -__v");
-  const allTypes = await Type.find({});
+      .populate({
+        path: "type",
+        select: "name",
+      })
+      .populate({
+        path: "partner",
+        select: "name",
+      })
+      .populate({
+        path: "category",
+        select: "name",
+      })
+      .select("-user -__v");
+    const allTypes = await Type.find({});
 
-  const initResult = allTypes
-    .map((i) => i.name)
-    .reduce((result, key) => {
-      result[key] = {};
-      return result;
-    }, {});
+    const initResult = allTypes
+      .map((i) => i.name)
+      .reduce((result, key) => {
+        result[key] = {};
+        return result;
+      }, {});
 
-  const statisticByCategory = monthTransaction.reduce(
-    (result, transaction, i) => {
-      result[transaction.type.name][transaction.category.name] =
-        (result[transaction.type.name][transaction.category.name] || 0) +
-        transaction.amount;
-      return result;
-    },
-    { ...initResult }
-  );
-  return res.send(statisticByCategory);
+    const statisticByCategory = monthTransaction.reduce(
+      (result, transaction, i) => {
+        result[transaction.type.name][transaction.category.name] =
+          (result[transaction.type.name][transaction.category.name] || 0) +
+          transaction.amount;
+        return result;
+      },
+      { ...initResult }
+    );
+    // Sort the result
+    Object.keys(statisticByCategory).map((key) => {
+      const object = statisticByCategory[key];
+      const sortedArray = Object.entries(object).sort((a, b) => b[1] - a[1]);
+      const sortedObj = Object.fromEntries(sortedArray);
+      statisticByCategory[key] = sortedObj;
+    });
+
+    return res.send(statisticByCategory);
+  } catch (err) {
+    return res.send({ message: err.message });
+  }
 };
