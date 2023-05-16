@@ -50,16 +50,6 @@ app.set("trust proxy", 1);
 //     },
 //   })
 // );
-console.log({
-  origin: PRODUCTION ? [FE_CLIENT_URL] : true,
-  credentials: true,
-  method: ["POST, PUT, PATCH, DELETE, GET"],
-});
-
-console.log({
-  maxAge: 10000 * 3600 * 24 * 30, // 10 day
-  ...(PRODUCTION ? { sameSite: "none", secure: true } : {}),
-});
 
 // DEPLOY
 app.use(

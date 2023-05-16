@@ -120,6 +120,7 @@ exports.updateTransaction = async (req, res, next) => {
 
 exports.getStatisticOutcome = async (req, res, next) => {
   try {
+    const userId = req.session.user._id;
     const currentDate = new Date();
     const monthTransaction = await Transaction.find({
       date: {
@@ -127,6 +128,7 @@ exports.getStatisticOutcome = async (req, res, next) => {
         $lte: new Date().setMonth(currentDate.getMonth() + 1, 0), // End date of month
       },
       skipped: false,
+      user: userId,
     })
       .populate({
         path: "type",
