@@ -10,7 +10,7 @@ const userRoutes = require("./routes/user");
 const categoryRoutes = require("./routes/category");
 const transactionRoutes = require("./routes/transaction");
 const partnerRoutes = require("./routes/partner");
-const Transaction = require("./models/Transaction");
+const { addIsDone } = require("./middlewares/updateTransaction");
 
 require("dotenv").config();
 
@@ -29,29 +29,7 @@ const app = express();
 app.use(express.static(__dirname));
 app.use(bodyParser.json());
 app.set("trust proxy", 1);
-// // DEVELOP
-// app.use(
-//   cors({
-//     origin: true,
-//     credentials: true,
-//   })
-// );
 
-// app.use(
-//   session({
-//     secret: SESSION_SECRET,
-//     saveUninitialized: false,
-//     resave: false,
-//     store: store,
-//     cookie: {
-//       // sameSite: "none", // UNCOMMENT FOR DEPLOY
-//       // secure: true, // UNCOMMENT FOR DEPLOY
-//       maxAge: 10000 * 60 * 60 * 24, // One day in milliseconds
-//     },
-//   })
-// );
-
-// DEPLOY
 app.use(
   cors({
     origin: PRODUCTION ? [FE_CLIENT_URL] : true,
@@ -72,6 +50,8 @@ app.use(
     },
   })
 );
+
+// app.use(addIsDone);
 
 app.use(async (req, res, next) => {
   if (!req.session.user) {

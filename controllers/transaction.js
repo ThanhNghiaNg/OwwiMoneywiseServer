@@ -53,7 +53,7 @@ exports.getUserTransactionById = async (req, res, next) => {
 exports.addTransaction = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const { type, category, partner, amount, description, date, skipped } =
+    const { type, category, partner, amount, description, date, isDone } =
       req.body;
     const newTransaction = await new Transaction({
       type,
@@ -62,7 +62,7 @@ exports.addTransaction = async (req, res, next) => {
       partner,
       amount: amount,
       description,
-      skipped,
+      isDone,
       date: new Date(date),
     });
     await newTransaction.save();
@@ -95,9 +95,9 @@ exports.deleteTransaction = async (req, res, next) => {
 exports.updateTransaction = async (req, res, next) => {
   try {
     const transactionId = req.params.id;
-    const { type, category, partner, amount, description, date, skipped } =
+    const { type, category, partner, amount, description, date, isDone } =
       req.body;
-    const newTransaction = await Transaction.updateOne(
+    await Transaction.updateOne(
       { _id: transactionId },
       {
         $set: {
@@ -107,7 +107,7 @@ exports.updateTransaction = async (req, res, next) => {
           amount,
           description,
           date,
-          skipped,
+          isDone,
         },
       }
     );
@@ -127,7 +127,7 @@ exports.getStatisticOutcome = async (req, res, next) => {
         $gte: currentDate.setDate(1), // Start date of month
         $lte: new Date().setMonth(currentDate.getMonth() + 1, 0), // End date of month
       },
-      skipped: false,
+      isDone: true,
       user: userId,
     })
       .populate({
