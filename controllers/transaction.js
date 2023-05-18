@@ -76,7 +76,7 @@ exports.addTransaction = async (req, res, next) => {
 exports.deleteTransaction = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const { transactionId } = req.body;
+    const transactionId = req.params.id;
     const transaction = await Transaction.deleteOne({
       user: userId,
       _id: transactionId,

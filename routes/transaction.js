@@ -9,7 +9,7 @@ router.get("/:id", isAuthUser, transactionControllers.getUserTransactionById);
 
 router.post("/create", isAuthUser, transactionControllers.addTransaction);
 
-router.delete("/remove", isAuthUser, transactionControllers.deleteTransaction);
+router.delete("/delete/:id", isAuthUser, transactionControllers.deleteTransaction);
 
 router.put("/update/:id", isAuthUser, transactionControllers.updateTransaction);
 
