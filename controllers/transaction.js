@@ -1,9 +1,11 @@
 const Transaction = require("../models/Transaction");
 const Type = require("../models/Type");
+const pagingResult = require("../utils/common").pagingResult;
 
 exports.getUserTransactions = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
+    const { page, pageSize } = req.query;
     const transactions = await Transaction.find({ user: userId })
       .populate({
         path: "type",
@@ -19,7 +21,7 @@ exports.getUserTransactions = async (req, res, next) => {
       })
       .select("-user -__v")
       .sort({ date: -1 });
-    return res.send(transactions);
+    return res.send(pagingResult(page, pageSize, transactions));
   } catch (err) {
     return res.send({ message: err.message });
   }
