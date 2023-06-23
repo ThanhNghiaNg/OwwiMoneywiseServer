@@ -81,3 +81,5 @@ mongoose.connect(MONGO_URI).then(() => {
   app.listen(PORT || 5000);
   console.log("Server is running...");
 });
+
+module.exports = app;
