@@ -123,11 +123,22 @@ exports.updateTransaction = async (req, res, next) => {
 exports.getStatisticOutcome = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const currentDate = new Date();
+    const currentDate = new Date() //(new Date().setMonth(new Date().getMonth()-2));
+    console.log(currentDate)
+    const startOfMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      1
+    );
+    const endOfMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+      1
+    );
     const monthTransaction = await Transaction.find({
       date: {
-        $gte: currentDate.setDate(1), // Start date of month
-        $lte: new Date().setMonth(currentDate.getMonth() + 1, 0), // End date of month
+        $gte: startOfMonth, 
+        $lte: endOfMonth,
       },
       isDone: true,
       user: userId,
@@ -163,6 +174,7 @@ exports.getStatisticOutcome = async (req, res, next) => {
       },
       { ...initResult }
     );
+
     // Sort the result
     Object.keys(statisticByCategory).map((key) => {
       const object = statisticByCategory[key];
