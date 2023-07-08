@@ -8,6 +8,7 @@ exports.getUserTransactions = async (req, res, next) => {
     const { page, pageSize } = req.query;
     const transactions = await Transaction.find({
       user: userId,
+      type: "645a5254e670f076a88a8936",
     })
       .populate({
         path: "type",
@@ -130,7 +131,7 @@ exports.getStatisticOutcome = async (req, res, next) => {
     const monthN = Number(month);
 
     const startOfMonth = new Date(currentDate.getFullYear(), monthN, 1);
-    const endOfMonth = new Date(currentDate.getFullYear(), monthN + 1, 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), monthN + 1, 0);
     console.log("startOfMonth: ", startOfMonth);
     console.log("endOfMonth: ", endOfMonth);
     const monthTransaction = await Transaction.find({
