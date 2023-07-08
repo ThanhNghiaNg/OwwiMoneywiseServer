@@ -6,7 +6,9 @@ exports.getUserTransactions = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
     const { page, pageSize } = req.query;
-    const transactions = await Transaction.find({ user: userId })
+    const transactions = await Transaction.find({
+      user: userId,
+    })
       .populate({
         path: "type",
         select: "name",
@@ -123,21 +125,15 @@ exports.updateTransaction = async (req, res, next) => {
 exports.getStatisticOutcome = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const currentDate = new Date() //(new Date().setMonth(new Date().getMonth()-2));
-    console.log(currentDate)
-    const startOfMonth = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      1
-    );
-    const endOfMonth = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1,
-      1
-    );
+    const { month } = req.query;
+    const currentDate = new Date(); //(new Date().setMonth(new Date().getMonth()-2));
+    const monthN = Number(month);
+
+    const startOfMonth = new Date(currentDate.getFullYear(), monthN, 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), monthN + 1, 1);
     const monthTransaction = await Transaction.find({
       date: {
-        $gte: startOfMonth, 
+        $gte: startOfMonth,
         $lte: endOfMonth,
       },
       isDone: true,
@@ -155,7 +151,9 @@ exports.getStatisticOutcome = async (req, res, next) => {
         path: "category",
         select: "name",
       })
-      .select("-user -__v");
+      .select("-user -__v")
+      .sort({ date: 1 });
+
     const allTypes = await Type.find({});
 
     const initResult = allTypes
