@@ -8,7 +8,7 @@ exports.getUserTransactions = async (req, res, next) => {
     const { page, pageSize } = req.query;
     const transactions = await Transaction.find({
       user: userId,
-      type: "645a5254e670f076a88a8936",
+      // type: "645a5254e670f076a88a8936",
     })
       .populate({
         path: "type",
