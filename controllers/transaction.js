@@ -131,6 +131,8 @@ exports.getStatisticOutcome = async (req, res, next) => {
 
     const startOfMonth = new Date(currentDate.getFullYear(), monthN, 1);
     const endOfMonth = new Date(currentDate.getFullYear(), monthN + 1, 1);
+    console.log("startOfMonth: ", startOfMonth);
+    console.log("endOfMonth: ", endOfMonth);
     const monthTransaction = await Transaction.find({
       date: {
         $gte: startOfMonth,
