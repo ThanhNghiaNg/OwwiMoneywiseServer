@@ -12,8 +12,10 @@ exports.getUserTransactions = async (req, res, next) => {
       ...(type ? { type } : {}),
       ...(partner ? { partner } : {}),
       ...(category ? { category } : {}),
-      ...(amount ? { amount } : {}),
-      ...(description ? { description } : {}),
+      ...(amount ? { amount: Number(amount) } : {}),
+      ...(description
+        ? { description: { $regex: description, $options: "i" } }
+        : {}),
       ...(date ? { date } : {}),
       ...(isDone !== undefined ? { isDone } : {}),
     };
