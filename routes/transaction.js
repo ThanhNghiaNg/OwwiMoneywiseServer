@@ -3,7 +3,7 @@ const express = require("express");
 const isAuthUser = require("../middlewares/isAuthUser");
 const router = express.Router();
 
-router.get("/all", isAuthUser, transactionControllers.getUserTransactions);
+router.post("/all", isAuthUser, transactionControllers.getUserTransactions);
 
 router.get("/:id", isAuthUser, transactionControllers.getUserTransactionById);
 

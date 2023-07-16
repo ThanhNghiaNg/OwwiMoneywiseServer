@@ -6,8 +6,21 @@ exports.getUserTransactions = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
     const { page, pageSize } = req.query;
+    const { type, partner, category, amount, description, date, isDone } =
+      req.body;
+    const query = {
+      ...(type ? { type } : {}),
+      ...(partner ? { partner } : {}),
+      ...(category ? { category } : {}),
+      ...(amount ? { amount } : {}),
+      ...(description ? { description } : {}),
+      ...(date ? { date } : {}),
+      ...(isDone !== undefined ? { isDone } : {}),
+    };
+    console.log("query: ", query);
     const transactions = await Transaction.find({
       user: userId,
+      ...query,
       // type: "645a5254e670f076a88a8936",
     })
       .populate({
@@ -132,9 +145,7 @@ exports.getStatisticOutcome = async (req, res, next) => {
 
     const startOfMonth = new Date(currentDate.getFullYear(), monthN, 1);
     const endOfMonth = new Date(currentDate.getFullYear(), monthN + 1, 0);
-    console.log("startOfMonth: ", startOfMonth);
-    console.log("endOfMonth: ", endOfMonth);
-    console.log("currentDate: ", currentDate);
+
     const monthTransaction = await Transaction.find({
       date: {
         $gte: startOfMonth,
