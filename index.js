@@ -32,7 +32,7 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: PRODUCTION ? [...FE_CLIENT_URL] : true,
+    origin: PRODUCTION ? FE_CLIENT_URL.split(',') : true,
     credentials: true,
     method: ["POST, PUT, PATCH, DELETE, GET"],
   })
