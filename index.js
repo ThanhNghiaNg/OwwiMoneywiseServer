@@ -48,7 +48,7 @@ app.use(
     store: store,
     cookie: {
       maxAge: 10000 * 3600 * 24 * 30, // 10 day
-      ...(PRODUCTION ? { sameSite: "strict", secure: true } : {}),
+      ...(PRODUCTION ? { sameSite: "none", secure: true } : {}),
     },
   })
 );
@@ -66,7 +66,7 @@ app.use(async (req, res, next) => {
   if (!req.session.user && !sessionID) {
     return next();
   }
-  
+
   if (req.session.user) {
     User.findById(req.session.user._id)
       .then((user) => {
