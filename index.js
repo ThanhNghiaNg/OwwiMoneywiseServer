@@ -48,7 +48,7 @@ app.use(
     store: store,
     cookie: {
       maxAge: 10000 * 3600 * 24 * 30, // 10 day
-      ...(PRODUCTION ? { sameSite: "strict", secure: false } : {}),
+      ...(PRODUCTION ? { sameSite: "strict", secure: true } : {}),
     },
   })
 );
