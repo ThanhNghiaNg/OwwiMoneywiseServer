@@ -19,7 +19,7 @@ exports.getUserTransactions = async (req, res, next) => {
       ...(date ? { date } : {}),
       ...(isDone !== undefined ? { isDone } : {}),
     };
-    console.log("query: ", query);
+
     const transactions = await Transaction.find({
       user: userId,
       ...query,
@@ -95,6 +95,7 @@ exports.addTransaction = async (req, res, next) => {
 
 exports.deleteTransaction = async (req, res, next) => {
   try {
+    console.log({ sessionssssssss: req.session });
     const userId = req.session.user._id;
     const transactionId = req.params.id;
     const transaction = await Transaction.deleteOne({

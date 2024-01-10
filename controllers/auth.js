@@ -24,6 +24,7 @@ exports.postLogin = (req, res, next) => {
         if (doMatch) {
           req.session.isLoggedIn = true;
           req.session.user = user;
+          req.session.sessionID = req.sessionID;
           if (user.isAdmin || role === (user.isAdmin ? "admin" : "user")) {
             return res.send({
               message: "Succeffly Login!",

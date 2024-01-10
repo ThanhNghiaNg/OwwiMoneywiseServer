@@ -12,6 +12,7 @@ const categoryRoutes = require("./routes/category");
 const transactionRoutes = require("./routes/transaction");
 const partnerRoutes = require("./routes/partner");
 const { addIsDone } = require("./middlewares/updateTransaction");
+const { ObjectID } = require("mongodb");
 
 require("dotenv").config();
 
@@ -56,16 +57,18 @@ app.use(
 
 app.use(async (req, res, next) => {
   console.log({ header: req.headers.cookie });
-  const sessionID = req.headers?.cookie?.split(";")?.reduce((acc, pair) => {
+  const cookies = req.headers?.cookie?.split(";")?.reduce((acc, pair) => {
     const [key, value] = pair.split("=");
     acc[key.trim()] = value;
     return acc;
   }, {});
-  
-  if (!req.session.user && !sessionToken) {
+
+  const sessionID = cookies?.sessionToken || "";
+  // console.log({ sessionID });
+  if (!req.session.user && !sessionID) {
     return next();
   }
-
+  console.log({ sessionID });
   if (req.session.user) {
     User.findById(req.session.user._id)
       .then((user) => {
@@ -78,17 +81,17 @@ app.use(async (req, res, next) => {
       .catch((err) => {
         return res.status(500).send("Internet Server Error");
       });
-  } else if (sessionToken) {
-    UserSession.findById(sessionToken).then((session) => {
-      User.findById(session.user._id)
+  } else if (sessionID) {
+    store.get(sessionID, (err, session) => {
+      User.findOne({ _id: session.user?._id || "" })
         .then((user) => {
           if (!user) {
             return next();
           }
           req.user = user;
-          req.session = session;
-          req.sessionID = session._id;
-          console.log({ reqUser: req.user });
+          req.session.isLoggedIn = true;
+          req.session.user = user;
+          req.session.sessionID = req.sessionID;
           next();
         })
         .catch((err) => {
