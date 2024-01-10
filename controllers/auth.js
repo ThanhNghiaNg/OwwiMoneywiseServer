@@ -30,6 +30,7 @@ exports.postLogin = (req, res, next) => {
               token: user._id,
               name: user.fullName,
               role: user.role,
+              sessionToken: req.sessionID
             });
           } else {
             return res.status(403).send({ message: "Unauthorized!" });

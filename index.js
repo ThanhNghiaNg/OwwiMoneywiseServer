@@ -4,6 +4,7 @@ const session = require("express-session");
 const mongoose = require("mongoose");
 const MongoDBStore = require("connect-mongodb-session")(session);
 const User = require("./models/User");
+const UserSession = require("./models/UserSession");
 const express = require("express");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
@@ -32,7 +33,7 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: PRODUCTION ? FE_CLIENT_URL.split(',') : true,
+    origin: PRODUCTION ? FE_CLIENT_URL.split(",") : true,
     credentials: true,
     method: ["POST, PUT, PATCH, DELETE, GET"],
   })
@@ -46,7 +47,7 @@ app.use(
     store: store,
     cookie: {
       maxAge: 10000 * 3600 * 24 * 30, // 10 day
-      ...(PRODUCTION ? { sameSite: 'strict', secure: true } : {}),
+      ...(PRODUCTION ? { sameSite: "strict", secure: true } : {}),
     },
   })
 );
@@ -54,20 +55,47 @@ app.use(
 // app.use(addIsDone);
 
 app.use(async (req, res, next) => {
-  if (!req.session.user) {
+  console.log({ header: req.headers.cookie });
+  const sessionID = req.headers?.cookie?.split(";")?.reduce((acc, pair) => {
+    const [key, value] = pair.split("=");
+    acc[key.trim()] = value;
+    return acc;
+  }, {});
+  
+  if (!req.session.user && !sessionToken) {
     return next();
   }
-  User.findById(req.session.user._id)
-    .then((user) => {
-      if (!user) {
-        return next();
-      }
-      req.user = user;
-      next();
-    })
-    .catch((err) => {
-      return res.status(500).send("Internet Server Error");
+
+  if (req.session.user) {
+    User.findById(req.session.user._id)
+      .then((user) => {
+        if (!user) {
+          return next();
+        }
+        req.user = user;
+        next();
+      })
+      .catch((err) => {
+        return res.status(500).send("Internet Server Error");
+      });
+  } else if (sessionToken) {
+    UserSession.findById(sessionToken).then((session) => {
+      User.findById(session.user._id)
+        .then((user) => {
+          if (!user) {
+            return next();
+          }
+          req.user = user;
+          req.session = session;
+          req.sessionID = session._id;
+          console.log({ reqUser: req.user });
+          next();
+        })
+        .catch((err) => {
+          return res.status(500).send("Internet Server Error");
+        });
     });
+  }
 });
 
 app.use(authRoutes);
