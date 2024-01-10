@@ -13,7 +13,7 @@ exports.getAuthenticated = (req, res, next) => {
 
 exports.postLogin = (req, res, next) => {
   const { username, password, role } = req.body;
-  console.log("Login with username: ", username);
+  
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).send({ message: errors.array()[0].msg });

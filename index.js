@@ -56,7 +56,6 @@ app.use(
 // app.use(addIsDone);
 
 app.use(async (req, res, next) => {
-  console.log({ header: req.headers.cookie });
   const cookies = req.headers?.cookie?.split(";")?.reduce((acc, pair) => {
     const [key, value] = pair.split("=");
     acc[key.trim()] = value;
@@ -64,11 +63,10 @@ app.use(async (req, res, next) => {
   }, {});
 
   const sessionID = cookies?.sessionToken || "";
-  // console.log({ sessionID });
   if (!req.session.user && !sessionID) {
     return next();
   }
-  console.log({ sessionID });
+  
   if (req.session.user) {
     User.findById(req.session.user._id)
       .then((user) => {
