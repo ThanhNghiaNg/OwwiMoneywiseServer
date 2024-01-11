@@ -62,7 +62,7 @@ app.use(async (req, res, next) => {
     return acc;
   }, {});
   
-  const sessionID = cookies?.sessionToken || req.headers.bearer || "";
+  const sessionID = cookies?.sessionToken || "";
   if (!req.session.user && !sessionID) {
     return next();
   }
