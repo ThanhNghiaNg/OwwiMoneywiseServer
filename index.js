@@ -61,8 +61,8 @@ app.use(async (req, res, next) => {
     acc[key.trim()] = value;
     return acc;
   }, {});
-
-  const sessionID = cookies?.sessionToken || "";
+  
+  const sessionID = cookies?.sessionToken || req.headers.bearer || "";
   if (!req.session.user && !sessionID) {
     return next();
   }
