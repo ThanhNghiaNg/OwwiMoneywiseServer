@@ -26,11 +26,7 @@ const store = new MongoDBStore({
 
 const app = express();
 app.use(async (req, res, next) => {
-  const log = `IP:${req.ip} From:${
-    req.headers.origin
-  } To: ${req.headers.host} Method:${req.method} Cookie:${
-    req.headers.cookie
-  } Agent:${req.headers["user-agent"]} `;
+  const log = `IP:${req.ip} From:${req.headers.origin} To: ${req.headers.host} Method:${req.method} Cookie:${req.headers.cookie} Bearer:${req.headers["bearer"]} Agent:${req.headers["user-agent"]} `;
   console.log(log);
   next();
 });
@@ -68,7 +64,7 @@ app.use(async (req, res, next) => {
     return acc;
   }, {});
 
-  const sessionID = cookies?.sessionToken || "";
+  const sessionID = cookies?.sessionToken || req.headers["bearer"] || "";
   if (!req.session.user && !sessionID) {
     return next();
   }
