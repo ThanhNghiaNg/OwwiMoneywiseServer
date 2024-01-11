@@ -4,15 +4,12 @@ const session = require("express-session");
 const mongoose = require("mongoose");
 const MongoDBStore = require("connect-mongodb-session")(session);
 const User = require("./models/User");
-const UserSession = require("./models/UserSession");
 const express = require("express");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
 const categoryRoutes = require("./routes/category");
 const transactionRoutes = require("./routes/transaction");
 const partnerRoutes = require("./routes/partner");
-const { addIsDone } = require("./middlewares/updateTransaction");
-const { ObjectID } = require("mongodb");
 
 require("dotenv").config();
 
@@ -28,7 +25,15 @@ const store = new MongoDBStore({
 });
 
 const app = express();
-// app.use(morgan('combined'));
+app.use(async (req, res, next) => {
+  const log = `${new Date().toISOString()} From:${req.headers.origin} To: ${
+    req.headers.host
+  } Method:${req.method} Cookie:${req.headers.cookie} Agent:${
+    req.headers["user-agent"]
+  } `;
+  console.log({ log });
+  next();
+});
 app.use(express.static(__dirname));
 app.use(bodyParser.json());
 app.set("trust proxy", 1);
@@ -62,7 +67,7 @@ app.use(async (req, res, next) => {
     acc[key.trim()] = value;
     return acc;
   }, {});
-  
+
   const sessionID = cookies?.sessionToken || "";
   if (!req.session.user && !sessionID) {
     return next();
