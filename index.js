@@ -28,7 +28,7 @@ const store = new MongoDBStore({
 });
 
 const app = express();
-app.use(morgan('combined'));
+// app.use(morgan('combined'));
 app.use(express.static(__dirname));
 app.use(bodyParser.json());
 app.set("trust proxy", 1);
