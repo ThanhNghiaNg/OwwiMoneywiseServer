@@ -26,12 +26,12 @@ const store = new MongoDBStore({
 
 const app = express();
 app.use(async (req, res, next) => {
-  const log = `${new Date().toISOString()} From:${req.headers.origin} To: ${
-    req.headers.host
-  } Method:${req.method} Cookie:${req.headers.cookie} Agent:${
-    req.headers["user-agent"]
-  } `;
-  console.log({ log });
+  const log = `IP:${req.ip} From:${
+    req.headers.origin
+  } To: ${req.headers.host} Method:${req.method} Cookie:${
+    req.headers.cookie
+  } Agent:${req.headers["user-agent"]} `;
+  console.log(log);
   next();
 });
 app.use(express.static(__dirname));
