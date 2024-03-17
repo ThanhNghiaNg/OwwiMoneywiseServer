@@ -30,7 +30,7 @@ router.post(
 router.post(
   "/register",
   [
-    body("email", "Invalid Email!").isEmail(),
+    body("email", "Invalid Email!").isEmail().optional(),
     body("username", "Username must have at least 6 characters").isLength({
       min: 6,
     }),
@@ -43,16 +43,15 @@ router.post(
     }),
     body(
       "password",
-      "Password must not contain special characters and have at least 6 characters!"
+      "Password must have at least 6 characters!"
     )
-      .isAlphanumeric()
       .isLength({ min: 6 }),
     body("fullName", "Name must have at least 3 characters").isLength({
       min: 3,
-    }),
+    }).optional(),
 
-    body("phone", "Phone must not be empty!").isLength({ min: 1 }),
-    body("phone", "Phone must be numeric only!").isNumeric(),
+    body("phone", "Phone must not be empty!").isLength({ min: 1 }).optional(),
+    body("phone", "Phone must be numeric only!").isNumeric().optional(),
   ],
   authController.postRegister
 );

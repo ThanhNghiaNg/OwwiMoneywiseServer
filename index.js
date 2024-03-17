@@ -7,9 +7,11 @@ const User = require("./models/User");
 const express = require("express");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
+const todoRoutes = require("./routes/todo");
 const categoryRoutes = require("./routes/category");
 const transactionRoutes = require("./routes/transaction");
 const partnerRoutes = require("./routes/partner");
+const isAuthUser = require("./middlewares/isAuthUser");
 
 require("dotenv").config();
 
@@ -103,7 +105,8 @@ app.use(async (req, res, next) => {
 
 app.use(authRoutes);
 
-app.use("/user", userRoutes);
+app.use("/user", isAuthUser, userRoutes);
+app.use("/todo", isAuthUser, todoRoutes);
 app.use("/category", categoryRoutes);
 app.use("/transaction", transactionRoutes);
 app.use("/partner", partnerRoutes);

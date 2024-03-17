@@ -1,12 +1,12 @@
-const isAuthUser = require("../middlewares/isAuthUser");
 const typeController = require('../controllers/type')
 const transactionController = require('../controllers/transaction')
+const taskController = require('../controllers/task')
 
 const express = require("express");
 const router = express.Router();
 
-router.get('/type/all', isAuthUser, typeController.getAllType)
+router.get('/type/all', typeController.getAllType)
 
-router.get('/dashboard/statistic/outcome', isAuthUser,transactionController.getStatisticOutcome )
+router.get('/dashboard/statistic/outcome', transactionController.getStatisticOutcome )
 
 module.exports = router;

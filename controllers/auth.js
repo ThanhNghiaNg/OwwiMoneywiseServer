@@ -27,7 +27,7 @@ exports.postLogin = (req, res, next) => {
           req.session.sessionID = req.sessionID;
           if (user.isAdmin || role === (user.isAdmin ? "admin" : "user")) {
             return res.send({
-              message: "Succeffly Login!",
+              message: "Successfully Login!",
               token: user._id,
               name: user.fullName,
               role: user.role,
@@ -45,6 +45,7 @@ exports.postLogin = (req, res, next) => {
       res.status(500).send({ message: err.message });
     });
 };
+
 exports.postRegister = (req, res, next) => {
   const { username, password, fullName, email, phone, address } = req.body;
   const errors = validationResult(req);
@@ -67,9 +68,9 @@ exports.postRegister = (req, res, next) => {
       });
       return newUser.save().then(async (user) => {
         const incomeType = new Type({ name: "Income", user: user._id });
-        const outcomType = new Type({ name: "Outcome", user: user._id });
+        const outcomeType = new Type({ name: "Outcome", user: user._id });
         await incomeType.save();
-        await outcomType.save();
+        await outcomeType.save();
         return res.status(201).send({ message: "Register Successfully!" });
       });
     })
@@ -79,7 +80,6 @@ exports.postRegister = (req, res, next) => {
 };
 
 exports.postLogout = (req, res, next) => {
-  console.log("logout");
   if (req.session) {
     req.session.destroy((err) => {
       if (err) {
