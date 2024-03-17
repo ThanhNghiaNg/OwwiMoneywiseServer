@@ -6,6 +6,7 @@ const router = express.Router();
 router.get("/all", todoController.getUserTodoList);
 router.post("/create", todoController.postCreateTodo);
 router.put("/update", todoController.putUpdateTodoStatus);
+router.put("/update-title", todoController.putUpdateTodoTitle);
 router.delete("/delete/:id", todoController.deleteTodo);
 router.delete("/delete-completed", todoController.deleteCompletedTodo);
 

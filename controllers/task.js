@@ -60,6 +60,21 @@ exports.putUpdateTodoStatus = async (req, res, next) => {
   }
 };
 
+exports.putUpdateTodoTitle = async (req, res, next) => {
+  try {
+    const userId = req.session.user._id;
+    const { id, title } = req.body;
+    const todo = await Todo.findOneAndUpdate(
+      { _id: id, user: userId },
+      { $set: { title } }
+    );
+    return res.send({ message: "Update successfully!" });
+  } catch (err) {
+    console.log(err);
+    return res.send({ message: err.message });
+  }
+};
+
 exports.deleteTodo = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
