@@ -71,3 +71,14 @@ exports.deleteTodo = async (req, res, next) => {
     return res.send({ message: err.message });
   }
 };
+
+exports.deleteCompletedTodo = async (req, res, next) => {
+  try {
+    const userId = req.session.user._id;
+    const todoList = await Todo.deleteMany({user: userId, status: "completed"});
+    return res.send({ message: "Delete completed todo successfully!" });
+  } catch (err) {
+    console.log(err);
+    return res.send({ message: err.message });
+  }
+};
