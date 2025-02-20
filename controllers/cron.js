@@ -20,12 +20,14 @@ exports.updateMostUsedCategoryAndType = async (req, res) => {
 
         categories.forEach(async (category) => {
             const keyCategory = `${category.user}-${category._id}`;
-            await Category.findByIdAndUpdate(category._id, { usedTime: categoryMapByUser[keyCategory] || 0 }, { new: true })
+            const _category = await Category.findByIdAndUpdate(category._id, { usedTime: categoryMapByUser[keyCategory] || 0 }, { new: true })
+            console.log({_category})
         })
 
         partners.forEach(async (partner) => {
             const keyPartner = `${partner.user}-${partner._id}`;
-            await Partner.findByIdAndUpdate(partner._id, { usedTime: partnerMapByUser[keyPartner] || 0 }, { new: true })
+            const _partner = await Partner.findByIdAndUpdate(partner._id, { usedTime: partnerMapByUser[keyPartner] || 0 }, { new: true })
+            console.log({_partner})
         })
         console.log({ categoryMapByUser, partnerMapByUser });
         return res.send({ message: "Updated Most Used Category!", categoryMapByUser });
