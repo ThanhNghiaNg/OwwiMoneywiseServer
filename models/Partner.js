@@ -12,6 +12,7 @@ const partnerSchema = Schema({
     required: false,
   },
   type: { type: Schema.Types.ObjectId, required: true, ref: "Type" },
+  usedTime: { type: Number, default: 0 },
 });
 
 module.exports = mongoose.model("Partner", partnerSchema);

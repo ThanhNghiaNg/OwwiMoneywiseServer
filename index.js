@@ -11,6 +11,7 @@ const todoRoutes = require("./routes/todo");
 const categoryRoutes = require("./routes/category");
 const transactionRoutes = require("./routes/transaction");
 const partnerRoutes = require("./routes/partner");
+const cronRoutes = require("./routes/cron");
 const isAuthUser = require("./middlewares/isAuthUser");
 
 require("dotenv").config();
@@ -108,6 +109,7 @@ app.use(authRoutes);
 app.use("/user", isAuthUser, userRoutes);
 app.use("/todo", isAuthUser, todoRoutes);
 app.use("/category", categoryRoutes);
+app.use("/cron", cronRoutes);
 app.use("/transaction", transactionRoutes);
 app.use("/partner", partnerRoutes);
 
