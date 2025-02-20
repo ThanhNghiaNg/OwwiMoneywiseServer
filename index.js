@@ -112,7 +112,7 @@ app.use("/transaction", transactionRoutes);
 app.use("/partner", partnerRoutes);
 
 mongoose.connect(MONGO_URI).then(() => {
-  app.listen(PORT || 5000);
+  app.listen(PORT || 5001);
   console.log("Server is running...");
 });
 
