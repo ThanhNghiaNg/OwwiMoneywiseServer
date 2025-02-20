@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/cron/update-most-used-category",
-      "schedule": "20 21 * * *"
+      "schedule": "24 21 * * *"
     }
   ]
 }
