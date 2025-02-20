@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/update-most-used",
-      "schedule": "*/5 * * * *"
+      "schedule": "30 19 * * *"
     }
   ]
-} 
+}
