@@ -9,7 +9,7 @@ exports.getUserPartners = async (req, res, next) => {
     const partners = await Partner.find({
       user: userId,
       ...(typeId ? { type: typeId } : {}),
-    }).sort([['usedTime', 'desc']]);;
+    }).sort([['updatedAt', 'desc']]);;
     return res.send(partners);
   } catch (err) {
     console.log(err);

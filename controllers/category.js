@@ -9,7 +9,7 @@ exports.getUserCategories = async (req, res, next) => {
     const categories = await Category.find({
       user: userId,
       ...(typeId ? { type: typeId } : {}),
-    }).sort([['usedTime', 'desc']]);
+    }).sort([['updatedAt', 'desc']]);
     return res.send(categories);
   } catch (err) {
     console.log(err);

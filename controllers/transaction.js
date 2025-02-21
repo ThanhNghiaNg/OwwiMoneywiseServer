@@ -1,5 +1,7 @@
 const Transaction = require("../models/Transaction");
 const Type = require("../models/Type");
+const Category = require("../models/Category");
+const Partner = require("../models/Partner");
 const pagingResult = require("../utils/common").pagingResult;
 
 exports.getUserTransactions = async (req, res, next) => {
@@ -86,6 +88,8 @@ exports.addTransaction = async (req, res, next) => {
       date: new Date(date),
     });
     await newTransaction.save();
+    Category.findByIdAndUpdate(category, { $inc: { usedTime: 1 } }).exec();
+    Partner.findByIdAndUpdate(partner, { $inc: { usedTime: 1 } }).exec();
     return res.status(201).send({ message: "Created Transactions!" });
   } catch (err) {
     console.log(err);
