@@ -4,12 +4,14 @@ const isAuth = require("../middlewares/isAuthUser");
 const { body } = require("express-validator/check");
 const express = require("express");
 const router = express.Router();
+const recaptcha = require("../middlewares/recaptcha");
 
 
 router.get("/authenticated", authController.getAuthenticated);
 
 router.post(
   "/login",
+  recaptcha,
   [
     body("username").custom((value, { req }) => {
       return User.findOne({ username: value }).then((user) => {
