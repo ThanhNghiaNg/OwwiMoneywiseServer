@@ -7,10 +7,10 @@ module.exports = async (req, res, next) => {
     if (!recaptchaToken) {
         return res.status(400).send({ message: "Recaptcha token is required." });
     }
-    if (!process.env.G_SECRET_KEY) {
+    if (!process.env.G_SECRET_RECAPTCHA) {
         return res.status(500).send({ message: "Recaptcha secret key is not configured." });
     }
-    const secretKey = process.env.G_SECRET_KEY;
+    const secretKey = process.env.G_SECRET_RECAPTCHA;
     const postData = {
         secret: secretKey,
         response: recaptchaToken,
