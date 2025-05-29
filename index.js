@@ -29,7 +29,14 @@ const store = new MongoDBStore({
 
 const app = express();
 app.use(async (req, res, next) => {
-  const log = `IP:${req.ip} From:${req.headers.origin} To: ${req.headers.host} Method:${req.method} Cookie:${req.headers.cookie} Bearer:${req.headers["bearer"]} Agent:${req.headers["user-agent"]} `;
+  const log = `
+  IP:${req.ip} 
+  From:${req.headers.origin} 
+  To: ${req.headers.host} 
+  Method:${req.method} 
+  Cookie:${req.headers.cookie} 
+  Bearer:${req.headers["bearer"]} 
+  Agent:${req.headers["user-agent"]} `;
   console.log(log);
   next();
 });
@@ -86,7 +93,7 @@ app.use(async (req, res, next) => {
       });
   } else if (sessionID) {
     store.get(sessionID, (err, session) => {
-      User.findOne({ _id: session.user?._id || "" })
+      User.findOne({ _id: session?.user?._id || "" })
         .then((user) => {
           if (!user) {
             return next();
