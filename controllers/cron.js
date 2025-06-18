@@ -1,6 +1,7 @@
 const Transaction = require("../models/Transaction");
 const Category = require("../models/Category");
 const Partner = require("../models/Partner");
+const CronLog = require("../models/CronLog");
 
 exports.updateMostUsedCategoryAndType = async (req, res) => {
     try {
@@ -32,10 +33,24 @@ exports.updateMostUsedCategoryAndType = async (req, res) => {
         })
         console.log({ categoryMapByUser, partnerMapByUser });
         console.log("End cron job update most used category and type.");
+        const cronLog = new CronLog({
+            path: "/cron/update-most-used-category",
+            status: "success",
+        })
+        await cronLog.save().catch((err) => {
+            console.log("Error saving cron log:", err);
+        });
         return res.send({ message: "Updated Most Used Category!", categoryMapByUser });
 
     } catch (err) {
         console.log(err);
+        const cronLog = new CronLog({
+            path: "/cron/update-most-used-category",
+            status: "error",
+        })
+        await cronLog.save().catch((err) => {
+            console.log("Error saving cron log:", err);
+        });
         return res.send({ message: err.message });
     }
 }
