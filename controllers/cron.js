@@ -4,6 +4,7 @@ const Partner = require("../models/Partner");
 
 exports.updateMostUsedCategoryAndType = async (req, res) => {
     try {
+        console.log("Start cron job update most used category and type...");
         const transactions = await Transaction.find();
         const categories = await Category.find();
         const partners = await Partner.find();
@@ -30,6 +31,7 @@ exports.updateMostUsedCategoryAndType = async (req, res) => {
             console.log({_partner})
         })
         console.log({ categoryMapByUser, partnerMapByUser });
+        console.log("End cron job update most used category and type.");
         return res.send({ message: "Updated Most Used Category!", categoryMapByUser });
 
     } catch (err) {
