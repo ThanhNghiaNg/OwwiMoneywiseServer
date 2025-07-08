@@ -21,13 +21,11 @@ exports.getUserTransactions = async (req, res, next) => {
       ...(isDone !== undefined ? { isDone } : {}),
     };
 
-    const [transactions, totalCount] = await Promise.all([Transaction.find({
+    const transactions = await Transaction.find({
       user: userId,
       ...query,
       // type: "645a5254e670f076a88a8936",
     })
-      // .skip(page * pageSize)
-      //   .limit(pageSize || 10)
       .populate({
         path: "type",
         select: "name",
@@ -50,41 +48,8 @@ exports.getUserTransactions = async (req, res, next) => {
         }
       })
       .select("-user -__v")
-      .sort({ date: -1 }),
-    // Transaction.countDocuments({
-    //   user: userId,
-    //   ...query,
-    // })
-    0
-  ])
-    // const transactions = await Transaction.find({
-    //   user: userId,
-    //   ...query,
-    //   // type: "645a5254e670f076a88a8936",
-    // }).skip(page*pageSize).limit(pageSize || 10)
-    //   .populate({
-    //     path: "type",
-    //     select: "name",
-    //   })
-    //   .populate({
-    //     path: "partner",
-    //     select: "name",
-    //   })
-    //   .populate({
-    //     path: "category",
-    //     select: "name",
-    //   })
-    //   .select("-user -__v")
-    //   .sort({ date: -1 });
-    // const totalCount = await Transaction.countDocuments({
-    //     user: userId,
-    //     ...query,
-    //   })
+      .sort({ date: -1 });
     return res.send(pagingResult(page, pageSize, transactions));
-    // return res.send({
-    //   data: transactions,
-    //   totalCount,
-    // })
   } catch (err) {
     return res.send({ message: err.message });
   }
