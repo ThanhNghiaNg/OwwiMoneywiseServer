@@ -21,35 +21,50 @@ exports.getUserTransactions = async (req, res, next) => {
       ...(isDone !== undefined ? { isDone } : {}),
     };
 
-    const transactions = await Transaction.find({
+    const transactions =
+      await Transaction.find({
       user: userId,
       ...query,
-      // type: "645a5254e670f076a88a8936",
     })
+      .lean() // Use lean to get plain JavaScript objects
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
       .populate({
         path: "type",
         select: "name",
         options: {
-          lean: true, // Use lean to improve performance
+          lean: true,
         }
       })
       .populate({
         path: "partner",
         select: "name",
         options: {
-          lean: true, // Use lean to improve performance
+          lean: true,
         }
       })
       .populate({
         path: "category",
         select: "name",
         options: {
-          lean: true, // Use lean to improve performance
+          lean: true,
         }
       })
       .select("-user -__v")
       .sort({ date: -1 });
-    return res.send(pagingResult(page, pageSize, transactions));
+
+    const totalCount = await  Transaction.countDocuments(
+        {
+          user: userId,
+          ...query,
+        }
+      ).lean()
+
+    return res.send({
+      data: transactions,
+      totalCount,
+    });
+    // return res.send(pagingResult(page, pageSize, transactions));
   } catch (err) {
     return res.send({ message: err.message });
   }
