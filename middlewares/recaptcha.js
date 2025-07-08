@@ -3,6 +3,8 @@ require("dotenv").config();
 const axios = require("axios");
 
 module.exports = async (req, res, next) => {
+    // next();
+    // return;
     const { recaptchaToken } = req.body;
     if (!recaptchaToken) {
         return res.status(400).send({ message: "Recaptcha token is required." });

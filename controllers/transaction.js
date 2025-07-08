@@ -7,8 +7,7 @@ const pagingResult = require("../utils/common").pagingResult;
 exports.getUserTransactions = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const { page, pageSize } = req.query;
-    const { type, partner, category, amount, description, date, isDone } =
+    const { page, pageSize, type, partner, category, amount, description, date, isDone } =
       req.body;
     const query = {
       ...(type ? { type } : {}),
@@ -22,26 +21,70 @@ exports.getUserTransactions = async (req, res, next) => {
       ...(isDone !== undefined ? { isDone } : {}),
     };
 
-    const transactions = await Transaction.find({
+    const [transactions, totalCount] = await Promise.all([Transaction.find({
       user: userId,
       ...query,
       // type: "645a5254e670f076a88a8936",
     })
+      // .skip(page * pageSize)
+      //   .limit(pageSize || 10)
       .populate({
         path: "type",
         select: "name",
+        options: {
+          lean: true, // Use lean to improve performance
+        }
       })
       .populate({
         path: "partner",
         select: "name",
+        options: {
+          lean: true, // Use lean to improve performance
+        }
       })
       .populate({
         path: "category",
         select: "name",
+        options: {
+          lean: true, // Use lean to improve performance
+        }
       })
       .select("-user -__v")
-      .sort({ date: -1 });
+      .sort({ date: -1 }),
+    // Transaction.countDocuments({
+    //   user: userId,
+    //   ...query,
+    // })
+    0
+  ])
+    // const transactions = await Transaction.find({
+    //   user: userId,
+    //   ...query,
+    //   // type: "645a5254e670f076a88a8936",
+    // }).skip(page*pageSize).limit(pageSize || 10)
+    //   .populate({
+    //     path: "type",
+    //     select: "name",
+    //   })
+    //   .populate({
+    //     path: "partner",
+    //     select: "name",
+    //   })
+    //   .populate({
+    //     path: "category",
+    //     select: "name",
+    //   })
+    //   .select("-user -__v")
+    //   .sort({ date: -1 });
+    // const totalCount = await Transaction.countDocuments({
+    //     user: userId,
+    //     ...query,
+    //   })
     return res.send(pagingResult(page, pageSize, transactions));
+    // return res.send({
+    //   data: transactions,
+    //   totalCount,
+    // })
   } catch (err) {
     return res.send({ message: err.message });
   }

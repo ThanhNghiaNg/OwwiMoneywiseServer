@@ -7,7 +7,7 @@ const router = express.Router();
 const recaptcha = require("../middlewares/recaptcha");
 
 
-router.get("/authenticated", authController.getAuthenticated);
+router.get("/whoami", authController.getAuthenticated);
 
 router.post(
   "/login",
