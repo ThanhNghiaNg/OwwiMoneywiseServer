@@ -34,5 +34,6 @@ const transactionSchema = Schema(
   },
   { timestamp: true }
 );
-
+// transactionSchema.index({ date: 1 }, { background: true});
+transactionSchema.index({ user: 1 }, { background: true});
 module.exports = mongoose.model("Transaction", transactionSchema);

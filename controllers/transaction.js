@@ -23,48 +23,111 @@ exports.getUserTransactions = async (req, res, next) => {
 
     const transactions =
       await Transaction.find({
-      user: userId,
-      ...query,
-    })
-      .lean() // Use lean to get plain JavaScript objects
-      .skip((page - 1) * pageSize)
-      .limit(pageSize)
-      .populate({
-        path: "type",
-        select: "name",
-        options: {
-          lean: true,
-        }
+        user: userId,
+        ...query,
       })
-      .populate({
-        path: "partner",
-        select: "name",
-        options: {
-          lean: true,
-        }
-      })
-      .populate({
-        path: "category",
-        select: "name",
-        options: {
-          lean: true,
-        }
-      })
-      .select("-user -__v")
-      .sort({ date: -1 });
+        .lean() // Use lean to get plain JavaScript objects
+        .skip((page - 1) * pageSize)
+        .limit(pageSize)
+        .populate({
+          path: "type",
+          select: "name",
+          options: {
+            lean: true,
+          }
+        })
+        .populate({
+          path: "partner",
+          select: "name",
+          options: {
+            lean: true,
+          }
+        })
+        .populate({
+          path: "category",
+          select: "name",
+          options: {
+            lean: true,
+          }
+        })
+        .select("-user -__v")
+        .sort({ date: -1 });
 
-    const totalCount = await  Transaction.countDocuments(
-        {
-          user: userId,
-          ...query,
-        }
-      ).lean()
+    const totalCount = await Transaction.countDocuments(
+      {
+        user: userId,
+        ...query,
+      }
+    ).lean()
 
     return res.send({
       data: transactions,
       totalCount,
     });
     // return res.send(pagingResult(page, pageSize, transactions));
+  } catch (err) {
+    return res.send({ message: err.message });
+  }
+};
+
+// using cursor pagination to prevent count total documents -> low performance for large datasets -> total documents is not very useful
+exports.getUserTransactionsV2 = async (req, res, next) => {
+  try {
+    const userId = req.session.user._id;
+    const { cursor, limit, type, partner, category, amount, description, date, isDone } =
+      req.query;
+    const query = {
+      ...(type ? { type } : {}),
+      ...(partner ? { partner } : {}),
+      ...(category ? { category } : {}),
+      ...(amount ? { amount: Number(amount) } : {}),
+      ...(description
+        ? { description: { $regex: description, $options: "i" } }
+        : {}),
+      // ...(date ? { date } : {}),
+      ...(isDone !== undefined ? { isDone } : {}),
+      ...(cursor ? { date: { $lt: new Date(cursor) } } : {}),
+    };
+    const numberLimit = Number(limit) || 10; // Default limit to 10 if not provided
+    const transactions =
+      await Transaction.find({
+        user: userId,
+        ...query,
+      })
+        .lean() // Use lean to get plain JavaScript objects
+        .limit(numberLimit)
+        .populate({
+          path: "type",
+          select: "name",
+          options: {
+            lean: true,
+          }
+        })
+        .populate({
+          path: "partner",
+          select: "name",
+          options: {
+            lean: true,
+          }
+        })
+        .populate({
+          path: "category",
+          select: "name",
+          options: {
+            lean: true,
+          }
+        })
+        .select("-user -__v")
+        .sort({ date: -1 });
+
+    const hasNextPage = transactions.length === numberLimit;
+    const nextCursor = hasNextPage ? transactions[transactions.length - 1].date : null;
+
+    res.json({
+      data: transactions,
+      nextCursor,
+      hasNextPage
+    });
   } catch (err) {
     return res.send({ message: err.message });
   }
