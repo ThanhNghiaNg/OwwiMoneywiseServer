@@ -25,6 +25,7 @@ exports.postLogin = (req, res, next) => {
           req.session.isLoggedIn = true;
           req.session.user = user;
           req.session.sessionID = req.sessionID;
+          req.session.ua = req.headers["user-agent"];
           if (user.isAdmin || role === (user.isAdmin ? "admin" : "user")) {
             return res.send({
               message: "Successfully Login!",

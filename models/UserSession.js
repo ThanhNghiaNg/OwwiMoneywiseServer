@@ -7,6 +7,7 @@ const userSessionSchema = Schema(
     expires: { type: String, require: true },
     session: {
       sessionID: { type: String, require: true },
+      ua: { type: String, require: false },
       cookie: {
         originalMaxAge: { type: Number, require: false },
         expires: { type: String, require: false },
