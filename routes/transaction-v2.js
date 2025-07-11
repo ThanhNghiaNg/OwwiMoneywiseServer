@@ -13,4 +13,6 @@ router.delete("/:id", isAuthUser, transactionControllers.deleteTransaction);
 
 router.put("/:id", isAuthUser, transactionControllers.updateTransaction);
 
+router.get("/statistic/weekly", isAuthUser, transactionControllers.getWeeklyOutcomeComparison);
+
 module.exports = router;

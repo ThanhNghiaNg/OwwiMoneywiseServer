@@ -2,7 +2,7 @@ const Transaction = require("../models/Transaction");
 const Type = require("../models/Type");
 const Category = require("../models/Category");
 const Partner = require("../models/Partner");
-const pagingResult = require("../utils/common").pagingResult;
+const mongoose = require("mongoose");
 
 exports.getUserTransactions = async (req, res, next) => {
   try {
@@ -294,3 +294,119 @@ exports.getStatisticOutcome = async (req, res, next) => {
     return res.send({ message: err.message });
   }
 };
+
+exports.getWeeklyOutcomeComparison = async (req, res, next) => {
+  // Get current date and calculate week boundaries
+  const userId = req.session.user._id;
+  // Get current date and calculate week boundaries
+  const now = new Date();
+  const startOfToday = new Date(now.setHours(0, 0, 0, 0));
+
+  // Calculate start of current week (Monday)
+  const startOfCurrentWeek = new Date(startOfToday);
+  startOfCurrentWeek.setDate(startOfToday.getDate() - startOfToday.getDay() + 1);
+
+  // Calculate start of previous week
+  const startOfPreviousWeek = new Date(startOfCurrentWeek);
+  startOfPreviousWeek.setDate(startOfCurrentWeek.getDate() - 7);
+
+  // Calculate end of current week
+  const endOfCurrentWeek = new Date(startOfCurrentWeek);
+  endOfCurrentWeek.setDate(startOfCurrentWeek.getDate() + 9);
+  console.log(startOfPreviousWeek)
+  console.log(startOfCurrentWeek)
+  console.log(endOfCurrentWeek)
+  try {
+    const result = await Transaction.aggregate([
+      // Join with Type collection
+      {
+        $lookup: {
+          from: 'types',
+          localField: 'type',
+          foreignField: '_id',
+          as: 'typeInfo'
+        }
+      },
+      // Unwind typeInfo array
+      { $unwind: '$typeInfo' },
+      // Filter for Outcome transactions, date range, and user
+      {
+        $match: {
+          'typeInfo.name': 'Outcome',
+          date: {
+            $gte: startOfPreviousWeek,
+            $lte: endOfCurrentWeek
+          },
+          user: new mongoose.Types.ObjectId(userId)
+        }
+      },
+      // Group by week and day
+      {
+        $group: {
+          _id: {
+            week: {
+              $cond: [
+                { $gte: ['$date', startOfCurrentWeek] },
+                'currentWeek',
+                'previousWeek'
+              ]
+            },
+            day: { $dayOfWeek: '$date' }
+          },
+          totalAmount: { $sum: '$amount' }
+        }
+      },
+      // Project to format output
+      {
+        $project: {
+          _id: 0,
+          week: '$_id.week',
+          day: '$_id.day',
+          totalAmount: 1
+        }
+      },
+      // Sort by week and day
+      {
+        $sort: {
+          week: -1,
+          day: 1
+        }
+      }
+    ]);
+
+    // Format data for chart
+    const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const currentWeekData = Array(7).fill(0);
+    const previousWeekData = Array(7).fill(0);
+
+    result.forEach(item => {
+      // Adjust day index: MongoDB $dayOfWeek returns 1=Sun, 2=Mon, ..., 7=Sat
+      const index = item.day === 1 ? 6 : item.day - 2;
+      if (item.week === 'currentWeek') {
+        currentWeekData[index] = item.totalAmount;
+      } else {
+        previousWeekData[index] = item.totalAmount;
+      }
+    });
+    console.log(result)
+    res.send({
+      labels: daysOfWeek,
+      datasets: [
+        {
+          label: 'Current Week',
+          data: currentWeekData,
+          backgroundColor: 'rgba(75, 192, 192, 0.5)'
+        },
+        {
+          label: 'Previous Week',
+          data: previousWeekData,
+          backgroundColor: 'rgba(255, 99, 132, 0.5)'
+        }
+      ]
+    });
+    return
+  } catch (error) {
+    console.error('Error fetching weekly outcome comparison:', error);
+    throw error;
+  }
+}
