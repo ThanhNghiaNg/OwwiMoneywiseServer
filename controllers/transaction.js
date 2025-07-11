@@ -126,7 +126,8 @@ exports.getUserTransactionsV2 = async (req, res, next) => {
     res.json({
       data: transactions,
       nextCursor,
-      hasNextPage
+      hasNextPage,
+      limit: numberLimit,
     });
   } catch (err) {
     return res.send({ message: err.message });
@@ -224,7 +225,7 @@ exports.updateTransaction = async (req, res, next) => {
     return res.status(201).send({ message: "Updated Transactions!" });
   } catch (err) {
     console.log(err);
-    return res.send({ message: err.message });
+    return res.status(400).send({ message: err.message });
   }
 };
 

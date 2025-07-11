@@ -8,6 +8,7 @@ const categorySchema = Schema({
   },
   user: { type: Schema.Types.ObjectId, required: true, ref: "User" },
   type: { type: Schema.Types.ObjectId, required: true, ref: "Type" },
+  description: { type: String, required: false },
   usedTime: { type: Number, default: 0 },
 }, {
   timestamps: true,

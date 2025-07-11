@@ -7,14 +7,10 @@ router.get("/", isAuthUser, transactionControllers.getUserTransactionsV2);
 
 router.get("/:id", isAuthUser, transactionControllers.getUserTransactionById);
 
-router.post("/create", isAuthUser, transactionControllers.addTransaction);
+router.post("/", isAuthUser, transactionControllers.addTransaction);
 
-router.delete(
-  "/delete/:id",
-  isAuthUser,
-  transactionControllers.deleteTransaction
-);
+router.delete("/:id", isAuthUser, transactionControllers.deleteTransaction);
 
-router.put("/update/:id", isAuthUser, transactionControllers.updateTransaction);
+router.put("/:id", isAuthUser, transactionControllers.updateTransaction);
 
 module.exports = router;

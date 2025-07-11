@@ -7,7 +7,7 @@ const partnerSchema = Schema({
     type: String,
     required: true,
   },
-  address: {
+  description: {
     type: String,
     required: false,
   },

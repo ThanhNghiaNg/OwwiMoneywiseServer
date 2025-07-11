@@ -10,10 +10,13 @@ const userRoutes = require("./routes/user");
 const todoRoutes = require("./routes/todo");
 const categoryRoutes = require("./routes/category");
 const transactionRoutes = require("./routes/transaction");
-const transactionRoutesV2 = require("./routes/transaction-v2");
 const partnerRoutes = require("./routes/partner");
 const cronRoutes = require("./routes/cron");
 const isAuthUser = require("./middlewares/isAuthUser");
+
+const transactionRoutesV2 = require("./routes/transaction-v2");
+const partnerRoutesV2 = require("./routes/partner-v2");
+const categoryRoutesV2 = require("./routes/category-v2");
 
 require("dotenv").config();
 
@@ -123,6 +126,8 @@ app.use("/partner", partnerRoutes);
 
 // v2
 app.use("/v2/transactions", transactionRoutesV2);
+app.use("/v2/partners", partnerRoutesV2);
+app.use("/v2/categories", categoryRoutesV2);
 
 mongoose.connect(MONGO_URI).then(() => {
   app.listen(PORT || 5001);

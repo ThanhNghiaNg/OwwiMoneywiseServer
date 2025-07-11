@@ -48,7 +48,7 @@ exports.postLogin = (req, res, next) => {
 };
 
 exports.postRegister = (req, res, next) => {
-  const { username, password, fullName, email, phone, address } = req.body;
+  const { username, password, fullName, email, phone, description } = req.body;
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
@@ -64,7 +64,7 @@ exports.postRegister = (req, res, next) => {
         fullName,
         email,
         phone,
-        address,
+        description,
         isAdmin: false,
       });
       return newUser.save().then(async (user) => {

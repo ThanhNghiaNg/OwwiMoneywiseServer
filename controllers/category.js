@@ -17,6 +17,30 @@ exports.getUserCategories = async (req, res, next) => {
   }
 };
 
+exports.getUserCategoriesV2 = async (req, res, next) => {
+  try {
+    const userId = req.session.user._id;
+    const typeId = req.query.typeId || "";
+    const categories = await Category.find({
+      user: userId,
+      ...(typeId ? { type: typeId } : {}),
+    })
+      .lean()
+      .populate({
+        path: "type",
+        select: "name",
+        options: {
+          lean: true,
+        }
+      })
+      .sort([['updatedAt', 'desc']]);;
+    return res.send(categories);
+  } catch (err) {
+    console.log(err);
+    return res.send({ message: err.message });
+  }
+};
+
 exports.addCategory = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
@@ -38,12 +62,12 @@ exports.addCategory = async (req, res, next) => {
 exports.deleteCategory = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const categoryId = req.body.categoryId;
+    const categoryId = req.params.id;
     const transactions = await Transaction.find({
       category: categoryId,
       user: userId,
     });
-    if (transactions) {
+    if (transactions && transactions.length > 0) {
       return res
         .status(403)
         .send({ message: "This category already has been in a transactions!" });
@@ -67,17 +91,22 @@ exports.deleteCategory = async (req, res, next) => {
 exports.updateCategory = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
-    const categoryId = req.body.categoryId;
+    const categoryId = req.params.id;
     const categoryName = req.body.name;
-    const newCategory = await Category.updateOne(
+    const description = req.body.description;
+    const type = req.body.type;
+    await Category.updateOne(
       {
         user: userId,
         _id: categoryId,
       },
-      { $set: { name: categoryName } }
-    );
-    await newCategory.save();
-    return res.status(201).send({ message: "Created New Category!" });
+      { $set: { name: categoryName, description, type } }
+    ).then(result => {
+      result.ok && result.nModified
+        ? res.status(201).send({ message: "Updated New Partner!" })
+        : res.status(400).send({ message: "Failed To Updated Partner!" })
+    });
+    return
   } catch (err) {
     console.log(err);
     return res.send({ message: err.message });
