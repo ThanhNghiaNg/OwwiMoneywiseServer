@@ -295,6 +295,67 @@ exports.getStatisticOutcome = async (req, res, next) => {
   }
 };
 
+exports.getMonthOutcomeStatistic = async (req, res, next) => {
+  try {
+    const userId = req.session.user._id;
+    const { month } = req.query;
+    const currentDate = new Date();
+    const monthN = Number(month - 1);
+
+    const startOfMonth = new Date(currentDate.getFullYear(), monthN, 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), monthN + 1, 0);
+
+    const statisticByCategory = await Transaction.aggregate([
+      {
+        $lookup: {
+          from: 'types',
+          localField: 'type',
+          foreignField: '_id',
+          as: 'type',
+        }
+      },
+      {
+        $match: {
+          date: {
+            $gte: startOfMonth,
+            $lte: endOfMonth,
+          },
+          isDone: true,
+          user: new mongoose.Types.ObjectId(userId),
+          'type.name': 'Outcome',
+        },
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'category',
+        },
+      },
+      {
+        $group: {
+          _id: {
+            category: '$category.name',
+          },
+          totalAmount: { $sum: '$amount' },
+        },
+      },
+    ]);
+    // Fetch all types to ensure all type names are included, even with zero transactions
+    const result = statisticByCategory.reduce((acc, item) => {
+      const typeName = item._id.category[0];
+      acc.push({ name: typeName, totalAmount: item.totalAmount });
+      acc[typeName] = item.totalAmount;
+      return acc;
+    }, []).sort((a, b) => b.totalAmount - a.totalAmount);
+
+    return res.send(result);
+  } catch (err) {
+    return res.status(500).send({ message: err.message });
+  }
+};
+
 exports.getWeeklyOutcomeComparison = async (req, res, next) => {
   // Get current date and calculate week boundaries
   const userId = req.session.user._id;
@@ -313,9 +374,7 @@ exports.getWeeklyOutcomeComparison = async (req, res, next) => {
   // Calculate end of current week
   const endOfCurrentWeek = new Date(startOfCurrentWeek);
   endOfCurrentWeek.setDate(startOfCurrentWeek.getDate() + 9);
-  console.log(startOfPreviousWeek)
-  console.log(startOfCurrentWeek)
-  console.log(endOfCurrentWeek)
+
   try {
     const result = await Transaction.aggregate([
       // Join with Type collection
@@ -337,7 +396,8 @@ exports.getWeeklyOutcomeComparison = async (req, res, next) => {
             $gte: startOfPreviousWeek,
             $lte: endOfCurrentWeek
           },
-          user: new mongoose.Types.ObjectId(userId)
+          user: new mongoose.Types.ObjectId(userId),
+          isDone: true // Ensure only completed transactions are considered
         }
       },
       // Group by week and day
@@ -388,7 +448,7 @@ exports.getWeeklyOutcomeComparison = async (req, res, next) => {
         previousWeekData[index] = item.totalAmount;
       }
     });
-    console.log(result)
+
     res.send({
       labels: daysOfWeek,
       datasets: [
@@ -407,6 +467,108 @@ exports.getWeeklyOutcomeComparison = async (req, res, next) => {
     return
   } catch (error) {
     console.error('Error fetching weekly outcome comparison:', error);
-    throw error;
+    res.status(500).send({ message: 'Error fetching weekly outcome comparison' });
+    return;
+  }
+}
+
+exports.getMonthlyOutcomeComparison = async (req, res, next) => {
+  // Get current date and calculate week boundaries
+  const userId = req.session.user._id;
+  // Get current date and calculate date range for past 12 months
+  const now = new Date();
+  const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const startOf12MonthsAgo = new Date(now.getFullYear() - 1, now.getMonth() + 1, 1, 0, 0, 0, 0);
+  try {
+    const result = await Transaction.aggregate([
+      // Join with Type collection
+      {
+        $lookup: {
+          from: 'types',
+          localField: 'type',
+          foreignField: '_id',
+          as: 'typeInfo'
+        }
+      },
+      // Unwind typeInfo array
+      { $unwind: '$typeInfo' },
+      // Filter for Outcome transactions, date range, and user
+      {
+        $match: {
+          'typeInfo.name': 'Outcome',
+          date: {
+            $gte: startOf12MonthsAgo,
+            $lte: endOfCurrentMonth
+          },
+          user: new mongoose.Types.ObjectId(userId),
+          isDone: true // Ensure only completed transactions are considered
+        }
+      },
+      // Group by year and month
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' }
+          },
+          totalAmount: { $sum: '$amount' }
+        }
+      },
+      // Project to format output
+      {
+        $project: {
+          _id: 0,
+          year: '$_id.year',
+          month: '$_id.month',
+          totalAmount: 1
+        }
+      },
+      // Sort by year and month (descending to have most recent first)
+      {
+        $sort: {
+          year: -1,
+          month: -1
+        }
+      }
+    ]);
+
+    // Format data for chart
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const labels = [];
+    const data = Array(12).fill(0);
+
+    // Generate labels for the past 12 months
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const month = monthNames[date.getMonth()];
+      const year = date.getFullYear();
+      labels.unshift(`${month}`); // Add to beginning for chronological order
+    }
+
+    // Map results to the data array
+    result.forEach(item => {
+      // Calculate months difference from current month
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1; // 1-based
+      const itemYear = item.year;
+      const itemMonth = item.month;
+      const monthsDiff = (currentYear - itemYear) * 12 + (currentMonth - itemMonth);
+      if (monthsDiff >= 0 && monthsDiff < 12) {
+        const index = 11 - monthsDiff; // Reverse to match chronological order
+        data[index] = item.totalAmount;
+      }
+    });
+
+    res.send(labels.map((label, index) => {
+      return {
+        label: label,
+        value: data[index],
+      };
+    }));
+    return;
+  } catch (error) {
+    console.error('Error fetching monthly outcome comparison:', error);
+    res.status(500).send({ message: 'Error fetching monthly outcome comparison' });
+    return
   }
 }

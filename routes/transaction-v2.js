@@ -15,4 +15,8 @@ router.put("/:id", isAuthUser, transactionControllers.updateTransaction);
 
 router.get("/statistic/weekly", isAuthUser, transactionControllers.getWeeklyOutcomeComparison);
 
+router.get("/statistic/monthly", isAuthUser, transactionControllers.getMonthlyOutcomeComparison);
+
+router.get("/statistic/month", isAuthUser, transactionControllers.getMonthOutcomeStatistic);
+
 module.exports = router;
