@@ -455,12 +455,12 @@ exports.getWeeklyOutcomeComparison = async (req, res, next) => {
         {
           label: 'Current Week',
           data: currentWeekData,
-          backgroundColor: 'rgba(75, 192, 192, 0.5)'
+          backgroundColor: '#4bc0c0'
         },
         {
           label: 'Previous Week',
           data: previousWeekData,
-          backgroundColor: 'rgba(255, 99, 132, 0.5)'
+          backgroundColor: '#ff6384'
         }
       ]
     });
