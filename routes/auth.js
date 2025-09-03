@@ -24,7 +24,6 @@ router.post(
       "password",
       "Password must not contain special characters and have at least 6 characters!"
     )
-      .isAlphanumeric()
       .isLength({ min: 6 }),
   ],
   authController.postLogin
