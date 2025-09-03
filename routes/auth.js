@@ -22,7 +22,7 @@ router.post(
     }),
     body(
       "password",
-      "Password must not contain special characters and have at least 6 characters!"
+      "Password must have at least 6 characters!"
     )
       .isLength({ min: 6 }),
   ],
