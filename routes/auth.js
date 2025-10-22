@@ -14,7 +14,7 @@ router.post(
   recaptcha,
   [
     body("username").custom((value, { req }) => {
-      return User.findOne({ username: value }).then((user) => {
+      return User.findOne({ username: { $regex: value, $options: "i" } }).then((user) => {
         if (!user) {
           return Promise.reject("User is not Signed up!");
         }

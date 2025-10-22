@@ -18,7 +18,7 @@ exports.postLogin = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(422).send({ message: errors.array()[0].msg });
   }
-  User.findOne({ username })
+  User.findOne({ username: { $regex: username, $options: "i" } })
     .then((user) => {
       return bcrypt.compare(password, user.password).then((doMatch) => {
         if (doMatch) {
