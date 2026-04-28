@@ -13,12 +13,14 @@ exports.getAuthenticated = (req, res, next) => {
 
 exports.postLogin = (req, res, next) => {
   const { username, password, role } = req.body;
-  
+
+  const lowercaseUsername = String(username).toLowerCase();
+
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).send({ message: errors.array()[0].msg });
   }
-  User.findOne({ username: { $regex: username, $options: "i" } })
+  User.findOne({ username: lowercaseUsername })
     .then((user) => {
       return bcrypt.compare(password, user.password).then((doMatch) => {
         if (doMatch) {
@@ -59,7 +61,7 @@ exports.postRegister = (req, res, next) => {
     .hash(password, 12)
     .then((hashPassword) => {
       const newUser = new User({
-        username,
+        username: String(username).toLowerCase(),
         password: hashPassword,
         fullName,
         email,
