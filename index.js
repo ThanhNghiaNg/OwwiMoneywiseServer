@@ -13,6 +13,7 @@ const transactionRoutes = require("./routes/transaction");
 const partnerRoutes = require("./routes/partner");
 const cronRoutes = require("./routes/cron");
 const isAuthUser = require("./middlewares/isAuthUser");
+const { ensureUserProfiles, sanitizeProfile } = require("./utils/profile");
 
 const transactionRoutesV2 = require("./routes/transaction-v2");
 const partnerRoutesV2 = require("./routes/partner-v2");
@@ -63,13 +64,11 @@ app.use(
     saveUninitialized: false,
     store: store,
     cookie: {
-      maxAge: 10000 * 3600 * 24 * 30, // 10 day
+      maxAge: 10000 * 3600 * 24 * 30,
       ...(PRODUCTION ? { sameSite: "none", secure: true } : {}),
     },
   })
 );
-
-// app.use(addIsDone);
 
 app.use(async (req, res, next) => {
   const cookies = req.headers?.cookie?.split(";")?.reduce((acc, pair) => {
@@ -78,40 +77,64 @@ app.use(async (req, res, next) => {
     return acc;
   }, {});
 
-  const sessionID = cookies?.sessionToken || req.headers["bearer"] || "";
-  if (!req.session.user && !sessionID) {
+  const externalSessionID = cookies?.sessionToken || req.headers["bearer"] || "";
+  if (!req.session.user && !externalSessionID) {
     return next();
   }
 
-  if (req.session.user) {
-    User.findById(req.session.user._id)
-      .then((user) => {
+  const hydrateSessionFromUser = async (user, persistedSession) => {
+    const { profiles } = await ensureUserProfiles(user);
+    const persistedProfileId =
+      req.session.activeProfileId ||
+      persistedSession?.activeProfileId ||
+      persistedSession?.activeProfile?._id ||
+      "";
+    const activeProfile =
+      profiles.find((profile) => String(profile._id) === String(persistedProfileId)) || null;
+
+    req.user = user;
+    req.session.isLoggedIn = true;
+    req.session.user = user;
+    req.session.sessionID = externalSessionID || req.sessionID;
+    req.session.profiles = profiles.map(sanitizeProfile);
+    req.session.activeProfileId = activeProfile ? String(activeProfile._id) : null;
+    req.session.activeProfile = activeProfile ? sanitizeProfile(activeProfile) : null;
+  };
+
+  try {
+    if (req.session.user) {
+      const user = await User.findById(req.session.user._id);
+      if (!user) {
+        return next();
+      }
+
+      await hydrateSessionFromUser(user, req.session);
+      return next();
+    }
+
+    if (!externalSessionID) {
+      return next();
+    }
+
+    store.get(externalSessionID, async (err, persistedSession) => {
+      if (err || !persistedSession?.user?._id) {
+        return next();
+      }
+
+      try {
+        const user = await User.findById(persistedSession.user._id);
         if (!user) {
           return next();
         }
-        req.user = user;
-        next();
-      })
-      .catch((err) => {
+
+        await hydrateSessionFromUser(user, persistedSession);
+        return next();
+      } catch (error) {
         return res.status(500).send("Internet Server Error");
-      });
-  } else if (sessionID) {
-    store.get(sessionID, (err, session) => {
-      User.findOne({ _id: session?.user?._id || "" })
-        .then((user) => {
-          if (!user) {
-            return next();
-          }
-          req.user = user;
-          req.session.isLoggedIn = true;
-          req.session.user = user;
-          req.session.sessionID = req.sessionID;
-          next();
-        })
-        .catch((err) => {
-          return res.status(500).send("Internet Server Error");
-        });
+      }
     });
+  } catch (err) {
+    return res.status(500).send("Internet Server Error");
   }
 });
 
@@ -124,7 +147,6 @@ app.use("/cron", cronRoutes);
 app.use("/transaction", transactionRoutes);
 app.use("/partner", partnerRoutes);
 
-// v2
 app.use("/v2/transactions", transactionRoutesV2);
 app.use("/v2/partners", partnerRoutesV2);
 app.use("/v2/categories", categoryRoutesV2);

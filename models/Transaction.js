@@ -1,6 +1,14 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
+const profileSnapshotSchema = new Schema(
+  {
+    profileId: { type: Schema.Types.ObjectId, required: true },
+    name: { type: String, required: true },
+  },
+  { _id: false }
+);
+
 const transactionSchema = Schema(
   {
     type: {
@@ -31,9 +39,14 @@ const transactionSchema = Schema(
       type: Boolean,
       require: true,
     },
+    createdByProfile: {
+      type: profileSnapshotSchema,
+      required: true,
+    },
   },
   { timestamp: true }
 );
-transactionSchema.index({ date: 1 }, { background: true});
-transactionSchema.index({ user: 1 }, { background: true});
+transactionSchema.index({ date: 1 }, { background: true });
+transactionSchema.index({ user: 1 }, { background: true });
+transactionSchema.index({ "createdByProfile.profileId": 1 }, { background: true });
 module.exports = mongoose.model("Transaction", transactionSchema);

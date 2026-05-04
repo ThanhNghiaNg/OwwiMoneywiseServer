@@ -6,6 +6,8 @@ const express = require("express");
 const router = express.Router();
 
 router.get('/type/all', typeController.getAllType)
+router.get('/profiles', userController.getProfiles)
+router.post('/profiles', userController.createProfile)
 
 router.get('/dashboard/statistic/outcome', transactionController.getStatisticOutcome )
 

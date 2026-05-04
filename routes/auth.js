@@ -6,7 +6,6 @@ const express = require("express");
 const router = express.Router();
 const recaptcha = require("../middlewares/recaptcha");
 
-
 router.get("/whoami", authController.getAuthenticated);
 
 router.post(
@@ -20,11 +19,7 @@ router.post(
         }
       });
     }),
-    body(
-      "password",
-      "Password must have at least 6 characters!"
-    )
-      .isLength({ min: 6 }),
+    body("password", "Password must have at least 6 characters!").isLength({ min: 6 }),
   ],
   authController.postLogin
 );
@@ -42,14 +37,12 @@ router.post(
         }
       });
     }),
-    body(
-      "password",
-      "Password must have at least 6 characters!"
-    )
-      .isLength({ min: 6 }),
-    body("fullName", "Name must have at least 3 characters").isLength({
-      min: 3,
-    }).optional(),
+    body("password", "Password must have at least 6 characters!").isLength({ min: 6 }),
+    body("fullName", "Name must have at least 3 characters")
+      .isLength({
+        min: 3,
+      })
+      .optional(),
 
     body("phone", "Phone must not be empty!").isLength({ min: 1 }).optional(),
     body("phone", "Phone must be numeric only!").isNumeric().optional(),
@@ -57,6 +50,7 @@ router.post(
   authController.postRegister
 );
 
+router.post("/select-profile", isAuth, authController.postSelectProfile);
 router.post("/logout", isAuth, authController.postLogout);
 
 module.exports = router;

@@ -1,6 +1,15 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
+const profileSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    description: { type: String, required: false },
+    isDefault: { type: Boolean, default: false },
+  },
+  { _id: true }
+);
+
 const userSchema = Schema(
   {
     username: { type: String, require: true },
@@ -10,6 +19,7 @@ const userSchema = Schema(
     phone: { type: String, require: true },
     address: { type: String, require: false },
     isAdmin: { type: Boolean, require: true },
+    profiles: { type: [profileSchema], default: [] },
   },
   { timestamp: true }
 );
