@@ -21,6 +21,13 @@ exports.getProfiles = async (req, res) => {
   }
 };
 
+exports.getActiveProfile = async (req, res) => {
+  return res.send({
+    activeProfileId: req.activeProfileId,
+    profile: req.activeProfile,
+  });
+};
+
 exports.createProfile = async (req, res) => {
   let session;
 
