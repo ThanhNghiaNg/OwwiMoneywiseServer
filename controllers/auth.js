@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Type = require("../models/Type");
+const Profile = require("../models/Profile");
 const bcrypt = require("bcryptjs");
 const { validationResult } = require("express-validator/check");
 
@@ -70,10 +71,19 @@ exports.postRegister = (req, res, next) => {
         isAdmin: false,
       });
       return newUser.save().then(async (user) => {
+        const defaultProfile = new Profile({
+          user: user._id,
+          name: "Personal",
+          isDefault: true,
+          order: 0,
+        });
         const incomeType = new Type({ name: "Income", user: user._id });
         const outcomeType = new Type({ name: "Outcome", user: user._id });
+
+        await defaultProfile.save();
         await incomeType.save();
         await outcomeType.save();
+
         return res.status(201).send({ message: "Register Successfully!" });
       });
     })
