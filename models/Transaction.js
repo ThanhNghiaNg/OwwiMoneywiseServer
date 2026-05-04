@@ -1,6 +1,16 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
+const createdByProfileSchema = Schema(
+  {
+    _id: { type: Schema.Types.ObjectId, required: true, ref: "Profile" },
+    name: { type: String, required: true },
+    avatarUrl: { type: String, required: false },
+    color: { type: String, required: false },
+  },
+  { _id: false }
+);
+
 const transactionSchema = Schema(
   {
     type: {
@@ -14,6 +24,10 @@ const transactionSchema = Schema(
       type: Schema.Types.ObjectId,
       require: true,
       ref: "Category",
+    },
+    createdByProfile: {
+      type: createdByProfileSchema,
+      required: false,
     },
     amount: {
       type: Number,

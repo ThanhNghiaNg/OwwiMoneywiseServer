@@ -1,13 +1,14 @@
 const transactionControllers = require("../controllers/transaction");
 const express = require("express");
 const isAuthUser = require("../middlewares/isAuthUser");
+const requireActiveProfile = require("../middlewares/requireActiveProfile");
 const router = express.Router();
 
 router.get("/", isAuthUser, transactionControllers.getUserTransactionsV2);
 
 router.get("/:id", isAuthUser, transactionControllers.getUserTransactionById);
 
-router.post("/", isAuthUser, transactionControllers.addTransaction);
+router.post("/", isAuthUser, requireActiveProfile, transactionControllers.addTransaction);
 
 router.delete("/:id", isAuthUser, transactionControllers.deleteTransaction);
 
