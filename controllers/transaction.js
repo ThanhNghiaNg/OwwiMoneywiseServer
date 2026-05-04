@@ -17,9 +17,16 @@ function buildCreatedByProfileSnapshot(profile) {
   };
 }
 
+function getProfileScopedQuery(req, query = {}) {
+  return {
+    user: req.session.user._id,
+    "createdByProfile._id": req.activeProfileId,
+    ...query,
+  };
+}
+
 exports.getUserTransactions = async (req, res, next) => {
   try {
-    const userId = req.session.user._id;
     const { page, pageSize, type, partner, category, amount, description, date, isDone } =
       req.body;
     const query = {
@@ -35,10 +42,7 @@ exports.getUserTransactions = async (req, res, next) => {
     };
 
     const transactions =
-      await Transaction.find({
-        user: userId,
-        ...query,
-      })
+      await Transaction.find(getProfileScopedQuery(req, query))
         .lean()
         .skip((page - 1) * pageSize)
         .limit(pageSize)
@@ -66,12 +70,7 @@ exports.getUserTransactions = async (req, res, next) => {
         .select("-user -__v")
         .sort({ date: -1 });
 
-    const totalCount = await Transaction.countDocuments(
-      {
-        user: userId,
-        ...query,
-      }
-    ).lean();
+    const totalCount = await Transaction.countDocuments(getProfileScopedQuery(req, query)).lean();
 
     return res.send({
       data: transactions,
@@ -84,7 +83,6 @@ exports.getUserTransactions = async (req, res, next) => {
 
 exports.getUserTransactionsV2 = async (req, res, next) => {
   try {
-    const userId = req.session.user._id;
     const { cursor, limit, type, partner, category, amount, description, date, isDone } =
       req.query;
     const query = {
@@ -100,10 +98,7 @@ exports.getUserTransactionsV2 = async (req, res, next) => {
     };
     const numberLimit = Number(limit) || 10;
     const transactions =
-      await Transaction.find({
-        user: userId,
-        ...query,
-      })
+      await Transaction.find(getProfileScopedQuery(req, query))
         .lean()
         .limit(numberLimit)
         .populate({
@@ -146,9 +141,8 @@ exports.getUserTransactionsV2 = async (req, res, next) => {
 
 exports.getUserTransactionById = async (req, res, next) => {
   try {
-    const userId = req.session.user._id;
     const id = req.params.id;
-    const transactions = await Transaction.find({ user: userId, _id: id })
+    const transactions = await Transaction.find(getProfileScopedQuery(req, { _id: id }))
       .populate({
         path: "type",
         select: "name",
@@ -196,16 +190,16 @@ exports.addTransaction = async (req, res, next) => {
 
 exports.deleteTransaction = async (req, res, next) => {
   try {
-    const userId = req.session.user._id;
     const transactionId = req.params.id;
-    const transaction = await Transaction.deleteOne({
-      user: userId,
-      _id: transactionId,
-    });
-    if (transaction) {
+    const transaction = await Transaction.deleteOne(
+      getProfileScopedQuery(req, {
+        _id: transactionId,
+      })
+    );
+    if (transaction && transaction.deletedCount) {
       return res.status(200).send({ message: "Deleted Transactions!" });
     } else {
-      return res.send(401).send({ message: "Invalid User or Transaction!" });
+      return res.status(404).send({ message: "Invalid User, Profile, or Transaction!" });
     }
   } catch (err) {
     console.log(err);
@@ -217,8 +211,8 @@ exports.updateTransaction = async (req, res, next) => {
   try {
     const transactionId = req.params.id;
     const { type, category, partner, amount, description, date, isDone } = req.body;
-    await Transaction.updateOne(
-      { _id: transactionId },
+    const result = await Transaction.updateOne(
+      getProfileScopedQuery(req, { _id: transactionId }),
       {
         $set: {
           type,
@@ -231,6 +225,11 @@ exports.updateTransaction = async (req, res, next) => {
         },
       }
     );
+
+    if (!result || !result.nModified) {
+      return res.status(404).send({ message: "Invalid User, Profile, or Transaction!" });
+    }
+
     return res.status(201).send({ message: "Updated Transactions!" });
   } catch (err) {
     console.log(err);
@@ -240,7 +239,6 @@ exports.updateTransaction = async (req, res, next) => {
 
 exports.getStatisticOutcome = async (req, res, next) => {
   try {
-    const userId = req.session.user._id;
     const { month } = req.query;
     const currentDate = new Date();
     const monthN = Number(month);
@@ -248,14 +246,15 @@ exports.getStatisticOutcome = async (req, res, next) => {
     const startOfMonth = new Date(currentDate.getFullYear(), monthN, 1);
     const endOfMonth = new Date(currentDate.getFullYear(), monthN + 1, 0);
 
-    const monthTransaction = await Transaction.find({
-      date: {
-        $gte: startOfMonth,
-        $lte: endOfMonth,
-      },
-      isDone: true,
-      user: userId,
-    })
+    const monthTransaction = await Transaction.find(
+      getProfileScopedQuery(req, {
+        date: {
+          $gte: startOfMonth,
+          $lte: endOfMonth,
+        },
+        isDone: true,
+      })
+    )
       .populate({
         path: "type",
         select: "name",
@@ -281,7 +280,7 @@ exports.getStatisticOutcome = async (req, res, next) => {
       }, {});
 
     const statisticByCategory = monthTransaction.reduce(
-      (result, transaction, i) => {
+      (result, transaction) => {
         result[transaction.type.name][transaction.category.name] =
           (result[transaction.type.name][transaction.category.name] || 0) +
           transaction.amount;
@@ -306,6 +305,7 @@ exports.getStatisticOutcome = async (req, res, next) => {
 exports.getMonthOutcomeStatistic = async (req, res, next) => {
   try {
     const userId = req.session.user._id;
+    const activeProfileId = req.activeProfileId;
     const { month } = req.query;
     const currentDate = new Date();
     const monthN = Number(month - 1);
@@ -330,6 +330,7 @@ exports.getMonthOutcomeStatistic = async (req, res, next) => {
           },
           isDone: true,
           user: new mongoose.Types.ObjectId(userId),
+          "createdByProfile._id": new mongoose.Types.ObjectId(activeProfileId),
           "type.name": "Outcome",
         },
       },
@@ -365,6 +366,7 @@ exports.getMonthOutcomeStatistic = async (req, res, next) => {
 
 exports.getWeeklyOutcomeComparison = async (req, res, next) => {
   const userId = req.session.user._id;
+  const activeProfileId = req.activeProfileId;
   const now = new Date();
   const startOfToday = new Date(now.setHours(0, 0, 0, 0));
 
@@ -396,6 +398,7 @@ exports.getWeeklyOutcomeComparison = async (req, res, next) => {
             $lte: endOfCurrentWeek
           },
           user: new mongoose.Types.ObjectId(userId),
+          "createdByProfile._id": new mongoose.Types.ObjectId(activeProfileId),
           isDone: true
         }
       },
@@ -468,6 +471,7 @@ exports.getWeeklyOutcomeComparison = async (req, res, next) => {
 
 exports.getMonthlyOutcomeComparison = async (req, res, next) => {
   const userId = req.session.user._id;
+  const activeProfileId = req.activeProfileId;
   const now = new Date();
   const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   const startOf12MonthsAgo = new Date(now.getFullYear() - 1, now.getMonth() + 1, 1, 0, 0, 0, 0);
@@ -490,6 +494,7 @@ exports.getMonthlyOutcomeComparison = async (req, res, next) => {
             $lte: endOfCurrentMonth
           },
           user: new mongoose.Types.ObjectId(userId),
+          "createdByProfile._id": new mongoose.Types.ObjectId(activeProfileId),
           isDone: true
         }
       },

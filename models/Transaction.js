@@ -46,8 +46,9 @@ const transactionSchema = Schema(
       require: true,
     },
   },
-  { timestamp: true }
+  { timestamps: true }
 );
-transactionSchema.index({ date: 1 }, { background: true});
-transactionSchema.index({ user: 1 }, { background: true});
+transactionSchema.index({ date: 1 }, { background: true });
+transactionSchema.index({ user: 1 }, { background: true });
+transactionSchema.index({ user: 1, "createdByProfile._id": 1 }, { background: true });
 module.exports = mongoose.model("Transaction", transactionSchema);
