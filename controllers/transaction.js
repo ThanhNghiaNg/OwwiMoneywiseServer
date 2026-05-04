@@ -18,10 +18,30 @@ function buildCreatedByProfileSnapshot(profile) {
 }
 
 function getProfileScopedQuery(req, query = {}) {
+  const activeProfileQuery = {
+    $or: [
+      { "createdByProfile._id": req.activeProfileId },
+      { createdByProfile: { $exists: false } },
+      { createdByProfile: null },
+    ],
+  };
+
   return {
     user: req.session.user._id,
-    "createdByProfile._id": req.activeProfileId,
+    ...activeProfileQuery,
     ...query,
+  };
+}
+
+function getProfileScopedAggregateMatch(req, query = {}) {
+  return {
+    user: new mongoose.Types.ObjectId(req.session.user._id),
+    ...query,
+    $or: [
+      { "createdByProfile._id": new mongoose.Types.ObjectId(req.activeProfileId) },
+      { createdByProfile: { $exists: false } },
+      { createdByProfile: null },
+    ],
   };
 }
 
@@ -46,36 +66,15 @@ exports.getUserTransactions = async (req, res, next) => {
         .lean()
         .skip((page - 1) * pageSize)
         .limit(pageSize)
-        .populate({
-          path: "type",
-          select: "name",
-          options: {
-            lean: true,
-          }
-        })
-        .populate({
-          path: "partner",
-          select: "name",
-          options: {
-            lean: true,
-          }
-        })
-        .populate({
-          path: "category",
-          select: "name",
-          options: {
-            lean: true,
-          }
-        })
+        .populate({ path: "type", select: "name", options: { lean: true } })
+        .populate({ path: "partner", select: "name", options: { lean: true } })
+        .populate({ path: "category", select: "name", options: { lean: true } })
         .select("-user -__v")
         .sort({ date: -1 });
 
     const totalCount = await Transaction.countDocuments(getProfileScopedQuery(req, query)).lean();
 
-    return res.send({
-      data: transactions,
-      totalCount,
-    });
+    return res.send({ data: transactions, totalCount });
   } catch (err) {
     return res.send({ message: err.message });
   }
@@ -83,16 +82,13 @@ exports.getUserTransactions = async (req, res, next) => {
 
 exports.getUserTransactionsV2 = async (req, res, next) => {
   try {
-    const { cursor, limit, type, partner, category, amount, description, date, isDone } =
-      req.query;
+    const { cursor, limit, type, partner, category, amount, description, isDone } = req.query;
     const query = {
       ...(type ? { type } : {}),
       ...(partner ? { partner } : {}),
       ...(category ? { category } : {}),
       ...(amount ? { amount: Number(amount) } : {}),
-      ...(description
-        ? { description: { $regex: description, $options: "i" } }
-        : {}),
+      ...(description ? { description: { $regex: description, $options: "i" } } : {}),
       ...(isDone !== undefined ? { isDone } : {}),
       ...(cursor ? { date: { $lt: new Date(cursor) } } : {}),
     };
@@ -101,39 +97,16 @@ exports.getUserTransactionsV2 = async (req, res, next) => {
       await Transaction.find(getProfileScopedQuery(req, query))
         .lean()
         .limit(numberLimit)
-        .populate({
-          path: "type",
-          select: "name",
-          options: {
-            lean: true,
-          }
-        })
-        .populate({
-          path: "partner",
-          select: "name",
-          options: {
-            lean: true,
-          }
-        })
-        .populate({
-          path: "category",
-          select: "name",
-          options: {
-            lean: true,
-          }
-        })
+        .populate({ path: "type", select: "name", options: { lean: true } })
+        .populate({ path: "partner", select: "name", options: { lean: true } })
+        .populate({ path: "category", select: "name", options: { lean: true } })
         .select("-user -__v")
         .sort({ date: -1 });
 
     const hasNextPage = transactions.length === numberLimit;
     const nextCursor = hasNextPage ? transactions[transactions.length - 1].date : null;
 
-    res.json({
-      data: transactions,
-      nextCursor,
-      hasNextPage,
-      limit: numberLimit,
-    });
+    res.json({ data: transactions, nextCursor, hasNextPage, limit: numberLimit });
   } catch (err) {
     return res.send({ message: err.message });
   }
@@ -143,18 +116,9 @@ exports.getUserTransactionById = async (req, res, next) => {
   try {
     const id = req.params.id;
     const transactions = await Transaction.find(getProfileScopedQuery(req, { _id: id }))
-      .populate({
-        path: "type",
-        select: "name",
-      })
-      .populate({
-        path: "partner",
-        select: "name",
-      })
-      .populate({
-        path: "category",
-        select: "name",
-      })
+      .populate({ path: "type", select: "name" })
+      .populate({ path: "partner", select: "name" })
+      .populate({ path: "category", select: "name" })
       .select("-user -__v")
       .sort({ date: -1 });
     return res.send(transactions);
@@ -170,10 +134,10 @@ exports.addTransaction = async (req, res, next) => {
     const newTransaction = await new Transaction({
       type,
       user: userId,
-      category: category,
+      category,
       partner,
       createdByProfile: buildCreatedByProfileSnapshot(req.activeProfile),
-      amount: amount,
+      amount,
       description,
       isDone,
       date: new Date(date),
@@ -191,16 +155,11 @@ exports.addTransaction = async (req, res, next) => {
 exports.deleteTransaction = async (req, res, next) => {
   try {
     const transactionId = req.params.id;
-    const transaction = await Transaction.deleteOne(
-      getProfileScopedQuery(req, {
-        _id: transactionId,
-      })
-    );
+    const transaction = await Transaction.deleteOne(getProfileScopedQuery(req, { _id: transactionId }));
     if (transaction && transaction.deletedCount) {
       return res.status(200).send({ message: "Deleted Transactions!" });
-    } else {
-      return res.status(404).send({ message: "Invalid User, Profile, or Transaction!" });
     }
+    return res.status(404).send({ message: "Invalid User, Profile, or Transaction!" });
   } catch (err) {
     console.log(err);
     return res.send({ message: err.message });
@@ -213,24 +172,17 @@ exports.updateTransaction = async (req, res, next) => {
     const { type, category, partner, amount, description, date, isDone } = req.body;
     const result = await Transaction.updateOne(
       getProfileScopedQuery(req, { _id: transactionId }),
-      {
-        $set: {
-          type,
-          category,
-          partner,
-          amount,
-          description,
-          date,
-          isDone,
-        },
-      }
+      { $set: { type, category, partner, amount, description, date, isDone } }
     );
 
-    if (!result || !result.nModified) {
+    const matchedCount = result?.matchedCount ?? result?.n ?? 0;
+    const modifiedCount = result?.modifiedCount ?? result?.nModified ?? 0;
+
+    if (!matchedCount) {
       return res.status(404).send({ message: "Invalid User, Profile, or Transaction!" });
     }
 
-    return res.status(201).send({ message: "Updated Transactions!" });
+    return res.status(201).send({ message: modifiedCount ? "Updated Transactions!" : "No changes applied." });
   } catch (err) {
     console.log(err);
     return res.status(400).send({ message: err.message });
@@ -248,52 +200,32 @@ exports.getStatisticOutcome = async (req, res, next) => {
 
     const monthTransaction = await Transaction.find(
       getProfileScopedQuery(req, {
-        date: {
-          $gte: startOfMonth,
-          $lte: endOfMonth,
-        },
+        date: { $gte: startOfMonth, $lte: endOfMonth },
         isDone: true,
       })
     )
-      .populate({
-        path: "type",
-        select: "name",
-      })
-      .populate({
-        path: "partner",
-        select: "name",
-      })
-      .populate({
-        path: "category",
-        select: "name",
-      })
+      .populate({ path: "type", select: "name" })
+      .populate({ path: "partner", select: "name" })
+      .populate({ path: "category", select: "name" })
       .select("-user -__v")
       .sort({ date: 1 });
 
     const allTypes = await Type.find({});
+    const initResult = allTypes.map((i) => i.name).reduce((result, key) => {
+      result[key] = {};
+      return result;
+    }, {});
 
-    const initResult = allTypes
-      .map((i) => i.name)
-      .reduce((result, key) => {
-        result[key] = {};
-        return result;
-      }, {});
-
-    const statisticByCategory = monthTransaction.reduce(
-      (result, transaction) => {
-        result[transaction.type.name][transaction.category.name] =
-          (result[transaction.type.name][transaction.category.name] || 0) +
-          transaction.amount;
-        return result;
-      },
-      { ...initResult }
-    );
+    const statisticByCategory = monthTransaction.reduce((result, transaction) => {
+      result[transaction.type.name][transaction.category.name] =
+        (result[transaction.type.name][transaction.category.name] || 0) + transaction.amount;
+      return result;
+    }, { ...initResult });
 
     Object.keys(statisticByCategory).map((key) => {
       const object = statisticByCategory[key];
       const sortedArray = Object.entries(object).sort((a, b) => b[1] - a[1]);
-      const sortedObj = Object.fromEntries(sortedArray);
-      statisticByCategory[key] = sortedObj;
+      statisticByCategory[key] = Object.fromEntries(sortedArray);
     });
 
     return res.send(statisticByCategory);
@@ -304,8 +236,6 @@ exports.getStatisticOutcome = async (req, res, next) => {
 
 exports.getMonthOutcomeStatistic = async (req, res, next) => {
   try {
-    const userId = req.session.user._id;
-    const activeProfileId = req.activeProfileId;
     const { month } = req.query;
     const currentDate = new Date();
     const monthN = Number(month - 1);
@@ -314,43 +244,16 @@ exports.getMonthOutcomeStatistic = async (req, res, next) => {
     const endOfMonth = new Date(currentDate.getFullYear(), monthN + 1, 0);
 
     const statisticByCategory = await Transaction.aggregate([
-      {
-        $lookup: {
-          from: "types",
-          localField: "type",
-          foreignField: "_id",
-          as: "type",
-        }
-      },
-      {
-        $match: {
-          date: {
-            $gte: startOfMonth,
-            $lte: endOfMonth,
-          },
-          isDone: true,
-          user: new mongoose.Types.ObjectId(userId),
-          "createdByProfile._id": new mongoose.Types.ObjectId(activeProfileId),
-          "type.name": "Outcome",
-        },
-      },
-      {
-        $lookup: {
-          from: "categories",
-          localField: "category",
-          foreignField: "_id",
-          as: "category",
-        },
-      },
-      {
-        $group: {
-          _id: {
-            category: "$category.name",
-          },
-          totalAmount: { $sum: "$amount" },
-        },
-      },
+      { $lookup: { from: "types", localField: "type", foreignField: "_id", as: "type" } },
+      { $match: getProfileScopedAggregateMatch(req, {
+        date: { $gte: startOfMonth, $lte: endOfMonth },
+        isDone: true,
+        "type.name": "Outcome",
+      }) },
+      { $lookup: { from: "categories", localField: "category", foreignField: "_id", as: "category" } },
+      { $group: { _id: { category: "$category.name" }, totalAmount: { $sum: "$amount" } } },
     ]);
+
     const result = statisticByCategory.reduce((acc, item) => {
       const typeName = item._id.category[0];
       acc.push({ name: typeName, totalAmount: item.totalAmount });
@@ -365,72 +268,35 @@ exports.getMonthOutcomeStatistic = async (req, res, next) => {
 };
 
 exports.getWeeklyOutcomeComparison = async (req, res, next) => {
-  const userId = req.session.user._id;
-  const activeProfileId = req.activeProfileId;
   const now = new Date();
   const startOfToday = new Date(now.setHours(0, 0, 0, 0));
-
   const startOfCurrentWeek = new Date(startOfToday);
   startOfCurrentWeek.setDate(startOfToday.getDate() - startOfToday.getDay() + 1);
-
   const startOfPreviousWeek = new Date(startOfCurrentWeek);
   startOfPreviousWeek.setDate(startOfCurrentWeek.getDate() - 7);
-
   const endOfCurrentWeek = new Date(startOfCurrentWeek);
   endOfCurrentWeek.setDate(startOfCurrentWeek.getDate() + 9);
 
   try {
     const result = await Transaction.aggregate([
-      {
-        $lookup: {
-          from: "types",
-          localField: "type",
-          foreignField: "_id",
-          as: "typeInfo"
-        }
-      },
+      { $lookup: { from: "types", localField: "type", foreignField: "_id", as: "typeInfo" } },
       { $unwind: "$typeInfo" },
-      {
-        $match: {
-          "typeInfo.name": "Outcome",
-          date: {
-            $gte: startOfPreviousWeek,
-            $lte: endOfCurrentWeek
-          },
-          user: new mongoose.Types.ObjectId(userId),
-          "createdByProfile._id": new mongoose.Types.ObjectId(activeProfileId),
-          isDone: true
-        }
-      },
+      { $match: getProfileScopedAggregateMatch(req, {
+        "typeInfo.name": "Outcome",
+        date: { $gte: startOfPreviousWeek, $lte: endOfCurrentWeek },
+        isDone: true,
+      }) },
       {
         $group: {
           _id: {
-            week: {
-              $cond: [
-                { $gte: ["$date", startOfCurrentWeek] },
-                "currentWeek",
-                "previousWeek"
-              ]
-            },
+            week: { $cond: [{ $gte: ["$date", startOfCurrentWeek] }, "currentWeek", "previousWeek"] },
             day: { $dayOfWeek: "$date" }
           },
           totalAmount: { $sum: "$amount" }
         }
       },
-      {
-        $project: {
-          _id: 0,
-          week: "$_id.week",
-          day: "$_id.day",
-          totalAmount: 1
-        }
-      },
-      {
-        $sort: {
-          week: -1,
-          day: 1
-        }
-      }
+      { $project: { _id: 0, week: "$_id.week", day: "$_id.day", totalAmount: 1 } },
+      { $sort: { week: -1, day: 1 } }
     ]);
 
     const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -439,88 +305,39 @@ exports.getWeeklyOutcomeComparison = async (req, res, next) => {
 
     result.forEach(item => {
       const index = item.day === 1 ? 6 : item.day - 2;
-      if (item.week === "currentWeek") {
-        currentWeekData[index] = item.totalAmount;
-      } else {
-        previousWeekData[index] = item.totalAmount;
-      }
+      if (item.week === "currentWeek") currentWeekData[index] = item.totalAmount;
+      else previousWeekData[index] = item.totalAmount;
     });
 
     res.send({
       labels: daysOfWeek,
       datasets: [
-        {
-          label: "Current Week",
-          data: currentWeekData,
-          backgroundColor: "#4bc0c0"
-        },
-        {
-          label: "Previous Week",
-          data: previousWeekData,
-          backgroundColor: "#ff6384"
-        }
+        { label: "Current Week", data: currentWeekData, backgroundColor: "#4bc0c0" },
+        { label: "Previous Week", data: previousWeekData, backgroundColor: "#ff6384" }
       ]
     });
-    return;
   } catch (error) {
     console.error("Error fetching weekly outcome comparison:", error);
     res.status(500).send({ message: "Error fetching weekly outcome comparison" });
-    return;
   }
 };
 
 exports.getMonthlyOutcomeComparison = async (req, res, next) => {
-  const userId = req.session.user._id;
-  const activeProfileId = req.activeProfileId;
   const now = new Date();
   const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   const startOf12MonthsAgo = new Date(now.getFullYear() - 1, now.getMonth() + 1, 1, 0, 0, 0, 0);
   try {
     const result = await Transaction.aggregate([
-      {
-        $lookup: {
-          from: "types",
-          localField: "type",
-          foreignField: "_id",
-          as: "typeInfo"
-        }
-      },
+      { $lookup: { from: "types", localField: "type", foreignField: "_id", as: "typeInfo" } },
       { $unwind: "$typeInfo" },
-      {
-        $match: {
-          "typeInfo.name": "Outcome",
-          date: {
-            $gte: startOf12MonthsAgo,
-            $lte: endOfCurrentMonth
-          },
-          user: new mongoose.Types.ObjectId(userId),
-          "createdByProfile._id": new mongoose.Types.ObjectId(activeProfileId),
-          isDone: true
-        }
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$date" },
-            month: { $month: "$date" }
-          },
-          totalAmount: { $sum: "$amount" }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          year: "$_id.year",
-          month: "$_id.month",
-          totalAmount: 1
-        }
-      },
-      {
-        $sort: {
-          year: 1,
-          month: 1
-        }
-      }
+      { $match: getProfileScopedAggregateMatch(req, {
+        "typeInfo.name": "Outcome",
+        date: { $gte: startOf12MonthsAgo, $lte: endOfCurrentMonth },
+        isDone: true,
+      }) },
+      { $group: { _id: { year: { $year: "$date" }, month: { $month: "$date" } }, totalAmount: { $sum: "$amount" } } },
+      { $project: { _id: 0, year: "$_id.year", month: "$_id.month", totalAmount: 1 } },
+      { $sort: { year: 1, month: 1 } }
     ]);
 
     const labels = [];
@@ -537,18 +354,10 @@ exports.getMonthlyOutcomeComparison = async (req, res, next) => {
 
     res.send({
       labels,
-      datasets: [
-        {
-          label: "Monthly Outcome",
-          data,
-          backgroundColor: "#36a2eb"
-        }
-      ]
+      datasets: [{ label: "Monthly Outcome", data, backgroundColor: "#36a2eb" }]
     });
-    return;
   } catch (error) {
     console.error("Error fetching monthly outcome comparison:", error);
     res.status(500).send({ message: "Error fetching monthly outcome comparison" });
-    return;
   }
 };

@@ -3,11 +3,11 @@ const Profile = require("../models/Profile");
 
 const MAX_PROFILES_PER_USER = 6;
 
-async function getFallbackProfile(userId, excludedProfileId) {
+async function getFallbackProfile(userId, excludedProfileId, session) {
   return Profile.findOne({
     user: userId,
     _id: { $ne: excludedProfileId },
-  }).sort({ isDefault: -1, order: 1, createdAt: 1 });
+  }, null, session ? { session } : undefined).sort({ isDefault: -1, order: 1, createdAt: 1 });
 }
 
 exports.getProfiles = async (req, res) => {
@@ -128,27 +128,45 @@ exports.updateProfile = async (req, res) => {
 };
 
 exports.deleteProfile = async (req, res) => {
+  let session;
+
   try {
     const userId = req.session.user._id;
     const profileId = req.params.id;
 
-    const profileCount = await Profile.countDocuments({ user: userId });
-    if (profileCount <= 1) {
-      return res.status(422).send({ message: "Cannot delete the last profile!" });
-    }
+    session = await mongoose.startSession();
 
-    const profile = await Profile.findOne({ _id: profileId, user: userId });
-    if (!profile) {
-      return res.status(404).send({ message: "Profile not found!" });
-    }
+    let nextActiveProfileId = req.session.activeProfileId || null;
+    await session.withTransaction(async () => {
+      const profileCount = await Profile.countDocuments({ user: userId }).session(session);
+      if (profileCount <= 1) {
+        throw new Error("CANNOT_DELETE_LAST_PROFILE");
+      }
 
-    await Profile.deleteOne({ _id: profileId, user: userId });
+      const profile = await Profile.findOne({ _id: profileId, user: userId }, null, { session });
+      if (!profile) {
+        throw new Error("PROFILE_NOT_FOUND");
+      }
 
-    const activeProfileId = String(req.session.activeProfileId || "");
-    if (activeProfileId && activeProfileId === String(profile._id)) {
-      const fallbackProfile = await getFallbackProfile(userId, profile._id);
-      req.session.activeProfileId = fallbackProfile ? fallbackProfile._id : null;
-    }
+      const fallbackProfile = await getFallbackProfile(userId, profile._id, session);
+
+      await Profile.deleteOne({ _id: profileId, user: userId }).session(session);
+
+      if (profile.isDefault && fallbackProfile) {
+        await Profile.updateOne(
+          { _id: fallbackProfile._id, user: userId },
+          { $set: { isDefault: true } },
+          { session }
+        );
+      }
+
+      const activeProfileId = String(req.session.activeProfileId || "");
+      if (activeProfileId && activeProfileId === String(profile._id)) {
+        nextActiveProfileId = fallbackProfile ? fallbackProfile._id : null;
+      }
+    });
+
+    req.session.activeProfileId = nextActiveProfileId;
 
     return res.send({
       message: "Deleted profile successfully!",
@@ -156,7 +174,20 @@ exports.deleteProfile = async (req, res) => {
     });
   } catch (err) {
     console.log(err);
+
+    if (err.message === "CANNOT_DELETE_LAST_PROFILE") {
+      return res.status(422).send({ message: "Cannot delete the last profile!" });
+    }
+
+    if (err.message === "PROFILE_NOT_FOUND") {
+      return res.status(404).send({ message: "Profile not found!" });
+    }
+
     return res.status(500).send({ message: err.message });
+  } finally {
+    if (session) {
+      session.endSession();
+    }
   }
 };
 

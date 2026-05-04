@@ -64,6 +64,10 @@ exports.postLogin = (req, res, next) => {
   }
   User.findOne({ username: lowercaseUsername })
     .then((user) => {
+      if (!user) {
+        return res.status(422).send({ message: "Username does not exist!" });
+      }
+
       return bcrypt.compare(password, user.password).then(async (doMatch) => {
         if (doMatch) {
           req.session.isLoggedIn = true;
