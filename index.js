@@ -11,6 +11,7 @@ const todoRoutes = require("./routes/todo");
 const categoryRoutes = require("./routes/category");
 const transactionRoutes = require("./routes/transaction");
 const partnerRoutes = require("./routes/partner");
+const profileRoutes = require("./routes/profile");
 const cronRoutes = require("./routes/cron");
 const isAuthUser = require("./middlewares/isAuthUser");
 
@@ -106,6 +107,7 @@ app.use(async (req, res, next) => {
           req.session.isLoggedIn = true;
           req.session.user = user;
           req.session.sessionID = req.sessionID;
+          req.session.activeProfileId = session?.activeProfileId || null;
           next();
         })
         .catch((err) => {
@@ -123,6 +125,7 @@ app.use("/category", categoryRoutes);
 app.use("/cron", cronRoutes);
 app.use("/transaction", transactionRoutes);
 app.use("/partner", partnerRoutes);
+app.use("/profiles", profileRoutes);
 
 // v2
 app.use("/v2/transactions", transactionRoutesV2);
