@@ -9,23 +9,45 @@ const MONGO_URI = process.env.MONGO_URI;
 const DEFAULT_PROFILE_NAME = "Personal";
 
 async function getOrCreateDefaultProfile(userId) {
-  let defaultProfile = await Profile.findOne({ user: userId, isDefault: true });
+  const existingDefaultProfile = await Profile.findOne({ user: userId, isDefault: true }).lean();
 
-  if (defaultProfile) {
-    return { profile: defaultProfile, created: false };
+  if (existingDefaultProfile) {
+    return { profile: existingDefaultProfile, created: false };
   }
 
-  const latestProfile = await Profile.findOne({ user: userId }).sort({ order: -1, createdAt: -1 });
+  const latestProfile = await Profile.findOne({ user: userId })
+    .sort({ order: -1, createdAt: -1 })
+    .lean();
   const nextOrder = latestProfile ? (latestProfile.order || 0) + 1 : 0;
 
-  defaultProfile = await Profile.create({
-    user: userId,
-    name: DEFAULT_PROFILE_NAME,
-    isDefault: true,
-    order: nextOrder,
-  });
+  try {
+    const createdProfile = await Profile.create({
+      user: userId,
+      name: DEFAULT_PROFILE_NAME,
+      isDefault: true,
+      order: nextOrder,
+    });
 
-  return { profile: defaultProfile, created: true };
+    return { profile: createdProfile.toObject(), created: true };
+  } catch (error) {
+    if (error && error.code === 11000) {
+      const defaultProfile = await Profile.findOne({ user: userId, isDefault: true }).lean();
+      if (defaultProfile) {
+        return { profile: defaultProfile, created: false };
+      }
+    }
+
+    throw error;
+  }
+}
+
+function buildCreatedByProfileSnapshot(profile) {
+  return {
+    _id: profile._id,
+    name: profile.name,
+    avatarUrl: profile.avatarUrl || "",
+    color: profile.color || "",
+  };
 }
 
 async function run() {
@@ -52,24 +74,21 @@ async function run() {
         summary.profilesCreated += 1;
       }
 
-      const transactionIds = await Transaction.collection
-        .find(
-          {
-            user: user._id,
-            $or: [{ profile: { $exists: false } }, { profile: null }],
-          },
-          { projection: { _id: 1 } }
-        )
-        .toArray();
-
-      if (!transactionIds.length) {
-        continue;
-      }
-
-      const transactionObjectIds = transactionIds.map((transaction) => transaction._id);
       const result = await Transaction.collection.updateMany(
-        { _id: { $in: transactionObjectIds } },
-        { $set: { profile: profile._id } }
+        {
+          user: user._id,
+          $or: [
+            { createdByProfile: { $exists: false } },
+            { createdByProfile: null },
+            { "createdByProfile._id": { $exists: false } },
+            { "createdByProfile._id": null },
+          ],
+        },
+        {
+          $set: {
+            createdByProfile: buildCreatedByProfileSnapshot(profile),
+          },
+        }
       );
 
       summary.transactionsBackfilled += result.modifiedCount || 0;
