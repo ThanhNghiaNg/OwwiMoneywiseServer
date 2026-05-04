@@ -16,6 +16,13 @@ const profileSchema = Schema(
 );
 
 profileSchema.index({ user: 1, order: 1 }, { background: true });
-profileSchema.index({ user: 1, isDefault: 1 }, { background: true });
+profileSchema.index(
+  { user: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { isDefault: true },
+    background: true,
+  }
+);
 
 module.exports = mongoose.model("Profile", profileSchema);
