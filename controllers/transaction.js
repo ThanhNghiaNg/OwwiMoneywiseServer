@@ -17,18 +17,24 @@ function buildCreatedByProfileSnapshot(profile) {
   };
 }
 
-function getProfileScopedQuery(req, query = {}) {
-  const activeProfileQuery = {
-    $or: [
-      { "createdByProfile._id": req.activeProfileId },
-      { createdByProfile: { $exists: false } },
-      { createdByProfile: null },
-    ],
-  };
+function getLegacyTransactionFallbackQuery(req) {
+  if (!req.activeProfile?.isDefault) {
+    return [];
+  }
 
+  return [
+    { createdByProfile: { $exists: false } },
+    { createdByProfile: null },
+  ];
+}
+
+function getProfileScopedQuery(req, query = {}) {
   return {
     user: req.session.user._id,
-    ...activeProfileQuery,
+    $or: [
+      { "createdByProfile._id": req.activeProfileId },
+      ...getLegacyTransactionFallbackQuery(req),
+    ],
     ...query,
   };
 }
@@ -39,38 +45,33 @@ function getProfileScopedAggregateMatch(req, query = {}) {
     ...query,
     $or: [
       { "createdByProfile._id": new mongoose.Types.ObjectId(req.activeProfileId) },
-      { createdByProfile: { $exists: false } },
-      { createdByProfile: null },
+      ...getLegacyTransactionFallbackQuery(req),
     ],
   };
 }
 
 exports.getUserTransactions = async (req, res, next) => {
   try {
-    const { page, pageSize, type, partner, category, amount, description, date, isDone } =
-      req.body;
+    const { page, pageSize, type, partner, category, amount, description, date, isDone } = req.body;
     const query = {
       ...(type ? { type } : {}),
       ...(partner ? { partner } : {}),
       ...(category ? { category } : {}),
       ...(amount ? { amount: Number(amount) } : {}),
-      ...(description
-        ? { description: { $regex: description, $options: "i" } }
-        : {}),
+      ...(description ? { description: { $regex: description, $options: "i" } } : {}),
       ...(date ? { date } : {}),
       ...(isDone !== undefined ? { isDone } : {}),
     };
 
-    const transactions =
-      await Transaction.find(getProfileScopedQuery(req, query))
-        .lean()
-        .skip((page - 1) * pageSize)
-        .limit(pageSize)
-        .populate({ path: "type", select: "name", options: { lean: true } })
-        .populate({ path: "partner", select: "name", options: { lean: true } })
-        .populate({ path: "category", select: "name", options: { lean: true } })
-        .select("-user -__v")
-        .sort({ date: -1 });
+    const transactions = await Transaction.find(getProfileScopedQuery(req, query))
+      .lean()
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .populate({ path: "type", select: "name", options: { lean: true } })
+      .populate({ path: "partner", select: "name", options: { lean: true } })
+      .populate({ path: "category", select: "name", options: { lean: true } })
+      .select("-user -__v")
+      .sort({ date: -1 });
 
     const totalCount = await Transaction.countDocuments(getProfileScopedQuery(req, query)).lean();
 
@@ -93,15 +94,14 @@ exports.getUserTransactionsV2 = async (req, res, next) => {
       ...(cursor ? { date: { $lt: new Date(cursor) } } : {}),
     };
     const numberLimit = Number(limit) || 10;
-    const transactions =
-      await Transaction.find(getProfileScopedQuery(req, query))
-        .lean()
-        .limit(numberLimit)
-        .populate({ path: "type", select: "name", options: { lean: true } })
-        .populate({ path: "partner", select: "name", options: { lean: true } })
-        .populate({ path: "category", select: "name", options: { lean: true } })
-        .select("-user -__v")
-        .sort({ date: -1 });
+    const transactions = await Transaction.find(getProfileScopedQuery(req, query))
+      .lean()
+      .limit(numberLimit)
+      .populate({ path: "type", select: "name", options: { lean: true } })
+      .populate({ path: "partner", select: "name", options: { lean: true } })
+      .populate({ path: "category", select: "name", options: { lean: true } })
+      .select("-user -__v")
+      .sort({ date: -1 });
 
     const hasNextPage = transactions.length === numberLimit;
     const nextCursor = hasNextPage ? transactions[transactions.length - 1].date : null;
@@ -352,10 +352,7 @@ exports.getMonthlyOutcomeComparison = async (req, res, next) => {
       data.push(found ? found.totalAmount : 0);
     }
 
-    res.send({
-      labels,
-      datasets: [{ label: "Monthly Outcome", data, backgroundColor: "#36a2eb" }]
-    });
+    res.send({ labels, datasets: [{ label: "Monthly Outcome", data, backgroundColor: "#36a2eb" }] });
   } catch (error) {
     console.error("Error fetching monthly outcome comparison:", error);
     res.status(500).send({ message: "Error fetching monthly outcome comparison" });
