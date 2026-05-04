@@ -15,7 +15,7 @@ const profileSchema = Schema(
   }
 );
 
-profileSchema.index({ user: 1, order: 1 }, { background: true });
+profileSchema.index({ user: 1, order: 1 }, { unique: true, background: true });
 profileSchema.index(
   { user: 1 },
   {

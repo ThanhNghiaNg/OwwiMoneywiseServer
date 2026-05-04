@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Profile = require("../models/Profile");
 
 const MAX_PROFILES_PER_USER = 6;
@@ -21,6 +22,8 @@ exports.getProfiles = async (req, res) => {
 };
 
 exports.createProfile = async (req, res) => {
+  let session;
+
   try {
     const userId = req.session.user._id;
     const name = String(req.body.name || "").trim();
@@ -31,27 +34,54 @@ exports.createProfile = async (req, res) => {
       return res.status(422).send({ message: "Profile name is required!" });
     }
 
-    const profileCount = await Profile.countDocuments({ user: userId });
-    if (profileCount >= MAX_PROFILES_PER_USER) {
+    session = await mongoose.startSession();
+
+    let createdProfile;
+    await session.withTransaction(async () => {
+      const profiles = await Profile.find({ user: userId }, null, { session })
+        .sort({ order: 1, createdAt: 1 });
+
+      if (profiles.length >= MAX_PROFILES_PER_USER) {
+        throw new Error("MAX_PROFILES_REACHED");
+      }
+
+      const latestProfile = profiles[profiles.length - 1];
+      const nextOrder = latestProfile ? (latestProfile.order || 0) + 1 : 0;
+
+      const createdProfiles = await Profile.create(
+        [
+          {
+            user: userId,
+            name,
+            avatarUrl,
+            color,
+            isDefault: profiles.length === 0,
+            order: nextOrder,
+          },
+        ],
+        { session }
+      );
+
+      createdProfile = createdProfiles[0];
+    });
+
+    return res.status(201).send(createdProfile);
+  } catch (err) {
+    console.log(err);
+
+    if (err.message === "MAX_PROFILES_REACHED") {
       return res.status(422).send({ message: "Maximum 6 profiles per account!" });
     }
 
-    const latestProfile = await Profile.findOne({ user: userId }).sort({ order: -1, createdAt: -1 });
-    const nextOrder = latestProfile ? (latestProfile.order || 0) + 1 : 0;
+    if (err && err.code === 11000) {
+      return res.status(409).send({ message: "Profile ordering conflict detected. Please retry!" });
+    }
 
-    const profile = await Profile.create({
-      user: userId,
-      name,
-      avatarUrl,
-      color,
-      isDefault: profileCount === 0,
-      order: nextOrder,
-    });
-
-    return res.status(201).send(profile);
-  } catch (err) {
-    console.log(err);
     return res.status(500).send({ message: err.message });
+  } finally {
+    if (session) {
+      session.endSession();
+    }
   }
 };
 
