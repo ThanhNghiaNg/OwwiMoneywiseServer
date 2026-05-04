@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Type = require("../models/Type");
 const Profile = require("../models/Profile");
@@ -50,7 +51,7 @@ exports.postLogin = (req, res, next) => {
     });
 };
 
-exports.postRegister = (req, res, next) => {
+exports.postRegister = async (req, res, next) => {
   const { username, password, fullName, email, phone, description } = req.body;
   const errors = validationResult(req);
 
@@ -58,38 +59,59 @@ exports.postRegister = (req, res, next) => {
     return res.status(422).send({ message: errors.array()[0].msg });
   }
 
-  bcrypt
-    .hash(password, 12)
-    .then((hashPassword) => {
-      const newUser = new User({
-        username: String(username).toLowerCase(),
-        password: hashPassword,
-        fullName,
-        email,
-        phone,
-        description,
-        isAdmin: false,
-      });
-      return newUser.save().then(async (user) => {
-        const defaultProfile = new Profile({
-          user: user._id,
-          name: "Personal",
-          isDefault: true,
-          order: 0,
-        });
-        const incomeType = new Type({ name: "Income", user: user._id });
-        const outcomeType = new Type({ name: "Outcome", user: user._id });
+  let session;
 
-        await defaultProfile.save();
-        await incomeType.save();
-        await outcomeType.save();
+  try {
+    const hashPassword = await bcrypt.hash(password, 12);
 
-        return res.status(201).send({ message: "Register Successfully!" });
-      });
-    })
-    .catch((err) => {
-      res.status(500).send({ message: err.message });
+    session = await mongoose.startSession();
+    await session.withTransaction(async () => {
+      const users = await User.create(
+        [
+          {
+            username: String(username).toLowerCase(),
+            password: hashPassword,
+            fullName,
+            email,
+            phone,
+            description,
+            isAdmin: false,
+          },
+        ],
+        { session }
+      );
+
+      const user = users[0];
+
+      await Profile.create(
+        [
+          {
+            user: user._id,
+            name: "Personal",
+            isDefault: true,
+            order: 0,
+          },
+        ],
+        { session }
+      );
+
+      await Type.create(
+        [
+          { name: "Income", user: user._id },
+          { name: "Outcome", user: user._id },
+        ],
+        { session }
+      );
     });
+
+    return res.status(201).send({ message: "Register Successfully!" });
+  } catch (err) {
+    return res.status(500).send({ message: err.message });
+  } finally {
+    if (session) {
+      session.endSession();
+    }
+  }
 };
 
 exports.postLogout = (req, res, next) => {
