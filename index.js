@@ -4,6 +4,7 @@ const session = require("express-session");
 const mongoose = require("mongoose");
 const MongoDBStore = require("connect-mongodb-session")(session);
 const User = require("./models/User");
+const Profile = require("./models/Profile");
 const express = require("express");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
@@ -11,6 +12,7 @@ const todoRoutes = require("./routes/todo");
 const categoryRoutes = require("./routes/category");
 const transactionRoutes = require("./routes/transaction");
 const partnerRoutes = require("./routes/partner");
+const profileRoutes = require("./routes/profile");
 const cronRoutes = require("./routes/cron");
 const isAuthUser = require("./middlewares/isAuthUser");
 
@@ -96,21 +98,34 @@ app.use(async (req, res, next) => {
         return res.status(500).send("Internet Server Error");
       });
   } else if (sessionID) {
-    store.get(sessionID, (err, session) => {
-      User.findOne({ _id: session?.user?._id || "" })
-        .then((user) => {
-          if (!user) {
-            return next();
-          }
-          req.user = user;
-          req.session.isLoggedIn = true;
-          req.session.user = user;
-          req.session.sessionID = req.sessionID;
-          next();
-        })
-        .catch((err) => {
-          return res.status(500).send("Internet Server Error");
-        });
+    store.get(sessionID, async (err, sessionData) => {
+      try {
+        const user = await User.findOne({ _id: sessionData?.user?._id || "" });
+        if (!user) {
+          return next();
+        }
+
+        req.user = user;
+        req.session.isLoggedIn = true;
+        req.session.user = user;
+        req.session.sessionID = req.sessionID;
+
+        const restoredActiveProfileId = sessionData?.activeProfileId || null;
+        if (!restoredActiveProfileId) {
+          req.session.activeProfileId = null;
+          return next();
+        }
+
+        const activeProfile = await Profile.findOne({
+          _id: restoredActiveProfileId,
+          user: user._id,
+        }).select("_id");
+
+        req.session.activeProfileId = activeProfile ? activeProfile._id : null;
+        return next();
+      } catch (restoreError) {
+        return res.status(500).send("Internet Server Error");
+      }
     });
   }
 });
@@ -123,6 +138,7 @@ app.use("/category", categoryRoutes);
 app.use("/cron", cronRoutes);
 app.use("/transaction", transactionRoutes);
 app.use("/partner", partnerRoutes);
+app.use("/profiles", profileRoutes);
 
 // v2
 app.use("/v2/transactions", transactionRoutesV2);

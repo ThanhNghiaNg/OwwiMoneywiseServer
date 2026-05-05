@@ -1,22 +1,23 @@
 const transactionControllers = require("../controllers/transaction");
 const express = require("express");
 const isAuthUser = require("../middlewares/isAuthUser");
+const requireActiveProfile = require("../middlewares/requireActiveProfile");
 const router = express.Router();
 
-router.get("/", isAuthUser, transactionControllers.getUserTransactionsV2);
+router.get("/", isAuthUser, requireActiveProfile, transactionControllers.getUserTransactionsV2);
 
-router.get("/:id", isAuthUser, transactionControllers.getUserTransactionById);
+router.get("/statistic/weekly", isAuthUser, requireActiveProfile, transactionControllers.getWeeklyOutcomeComparison);
 
-router.post("/", isAuthUser, transactionControllers.addTransaction);
+router.get("/statistic/monthly", isAuthUser, requireActiveProfile, transactionControllers.getMonthlyOutcomeComparison);
 
-router.delete("/:id", isAuthUser, transactionControllers.deleteTransaction);
+router.get("/statistic/month", isAuthUser, requireActiveProfile, transactionControllers.getMonthOutcomeStatistic);
 
-router.put("/:id", isAuthUser, transactionControllers.updateTransaction);
+router.get("/:id", isAuthUser, requireActiveProfile, transactionControllers.getUserTransactionById);
 
-router.get("/statistic/weekly", isAuthUser, transactionControllers.getWeeklyOutcomeComparison);
+router.post("/", isAuthUser, requireActiveProfile, transactionControllers.addTransaction);
 
-router.get("/statistic/monthly", isAuthUser, transactionControllers.getMonthlyOutcomeComparison);
+router.delete("/:id", isAuthUser, requireActiveProfile, transactionControllers.deleteTransaction);
 
-router.get("/statistic/month", isAuthUser, transactionControllers.getMonthOutcomeStatistic);
+router.put("/:id", isAuthUser, requireActiveProfile, transactionControllers.updateTransaction);
 
 module.exports = router;
