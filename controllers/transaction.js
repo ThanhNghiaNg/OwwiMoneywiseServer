@@ -69,6 +69,20 @@ function getProfileScopedAggregateMatch(req, query = {}) {
   };
 }
 
+function getAccountScopedAggregateMatch(req, query = {}) {
+  return {
+    user: new mongoose.Types.ObjectId(req.session.user._id),
+    ...query,
+  };
+}
+
+function getTransactionAggregateMatch(req, query = {}) {
+  const scope = resolveViewScope(req);
+  return scope === "account"
+    ? getAccountScopedAggregateMatch(req, query)
+    : getProfileScopedAggregateMatch(req, query);
+}
+
 exports.getUserTransactions = async (req, res, next) => {
   try {
     const { page, pageSize, type, partner, category, amount, description, date, isDone } = req.body;
@@ -220,7 +234,7 @@ exports.getStatisticOutcome = async (req, res, next) => {
     const endOfMonth = new Date(currentDate.getFullYear(), monthN + 1, 0);
 
     const monthTransaction = await Transaction.find(
-      getProfileScopedQuery(req, {
+      getTransactionReadQuery(req, {
         date: { $gte: startOfMonth, $lte: endOfMonth },
         isDone: true,
       })
@@ -249,7 +263,7 @@ exports.getStatisticOutcome = async (req, res, next) => {
       statisticByCategory[key] = Object.fromEntries(sortedArray);
     });
 
-    return res.send(statisticByCategory);
+    return res.send({ scope: resolveViewScope(req), data: statisticByCategory });
   } catch (err) {
     return res.send({ message: err.message });
   }
@@ -266,7 +280,7 @@ exports.getMonthOutcomeStatistic = async (req, res, next) => {
 
     const statisticByCategory = await Transaction.aggregate([
       { $lookup: { from: "types", localField: "type", foreignField: "_id", as: "type" } },
-      { $match: getProfileScopedAggregateMatch(req, {
+      { $match: getTransactionAggregateMatch(req, {
         date: { $gte: startOfMonth, $lte: endOfMonth },
         isDone: true,
         "type.name": "Outcome",
@@ -282,7 +296,7 @@ exports.getMonthOutcomeStatistic = async (req, res, next) => {
       return acc;
     }, []).sort((a, b) => b.totalAmount - a.totalAmount);
 
-    return res.send(result);
+    return res.send({ scope: resolveViewScope(req), data: result });
   } catch (err) {
     return res.status(500).send({ message: err.message });
   }
@@ -302,7 +316,7 @@ exports.getWeeklyOutcomeComparison = async (req, res, next) => {
     const result = await Transaction.aggregate([
       { $lookup: { from: "types", localField: "type", foreignField: "_id", as: "typeInfo" } },
       { $unwind: "$typeInfo" },
-      { $match: getProfileScopedAggregateMatch(req, {
+      { $match: getTransactionAggregateMatch(req, {
         "typeInfo.name": "Outcome",
         date: { $gte: startOfPreviousWeek, $lte: endOfCurrentWeek },
         isDone: true,
@@ -331,6 +345,7 @@ exports.getWeeklyOutcomeComparison = async (req, res, next) => {
     });
 
     res.send({
+      scope: resolveViewScope(req),
       labels: daysOfWeek,
       datasets: [
         { label: "Current Week", data: currentWeekData, backgroundColor: "#4bc0c0" },
@@ -351,7 +366,7 @@ exports.getMonthlyOutcomeComparison = async (req, res, next) => {
     const result = await Transaction.aggregate([
       { $lookup: { from: "types", localField: "type", foreignField: "_id", as: "typeInfo" } },
       { $unwind: "$typeInfo" },
-      { $match: getProfileScopedAggregateMatch(req, {
+      { $match: getTransactionAggregateMatch(req, {
         "typeInfo.name": "Outcome",
         date: { $gte: startOf12MonthsAgo, $lte: endOfCurrentMonth },
         isDone: true,
@@ -373,7 +388,11 @@ exports.getMonthlyOutcomeComparison = async (req, res, next) => {
       data.push(found ? found.totalAmount : 0);
     }
 
-    res.send({ labels, datasets: [{ label: "Monthly Outcome", data, backgroundColor: "#36a2eb" }] });
+    res.send({
+      scope: resolveViewScope(req),
+      labels,
+      datasets: [{ label: "Monthly Outcome", data, backgroundColor: "#36a2eb" }]
+    });
   } catch (error) {
     console.error("Error fetching monthly outcome comparison:", error);
     res.status(500).send({ message: "Error fetching monthly outcome comparison" });
