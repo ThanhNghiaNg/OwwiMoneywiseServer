@@ -17,6 +17,11 @@ function buildCreatedByProfileSnapshot(profile) {
   };
 }
 
+function resolveViewScope(req) {
+  const rawScope = req.query.scope || req.body?.scope;
+  return rawScope === "account" ? "account" : "profile";
+}
+
 function getLegacyTransactionFallbackQuery(req) {
   if (!req.activeProfile?.isDefault) {
     return [];
@@ -37,6 +42,20 @@ function getProfileScopedQuery(req, query = {}) {
     ],
     ...query,
   };
+}
+
+function getAccountScopedQuery(req, query = {}) {
+  return {
+    user: req.session.user._id,
+    ...query,
+  };
+}
+
+function getTransactionReadQuery(req, query = {}) {
+  const scope = resolveViewScope(req);
+  return scope === "account"
+    ? getAccountScopedQuery(req, query)
+    : getProfileScopedQuery(req, query);
 }
 
 function getProfileScopedAggregateMatch(req, query = {}) {
@@ -63,7 +82,8 @@ exports.getUserTransactions = async (req, res, next) => {
       ...(isDone !== undefined ? { isDone } : {}),
     };
 
-    const transactions = await Transaction.find(getProfileScopedQuery(req, query))
+    const readQuery = getTransactionReadQuery(req, query);
+    const transactions = await Transaction.find(readQuery)
       .lean()
       .skip((page - 1) * pageSize)
       .limit(pageSize)
@@ -73,9 +93,9 @@ exports.getUserTransactions = async (req, res, next) => {
       .select("-user -__v")
       .sort({ date: -1 });
 
-    const totalCount = await Transaction.countDocuments(getProfileScopedQuery(req, query)).lean();
+    const totalCount = await Transaction.countDocuments(readQuery).lean();
 
-    return res.send({ data: transactions, totalCount });
+    return res.send({ data: transactions, totalCount, scope: resolveViewScope(req) });
   } catch (err) {
     return res.send({ message: err.message });
   }
@@ -94,7 +114,8 @@ exports.getUserTransactionsV2 = async (req, res, next) => {
       ...(cursor ? { date: { $lt: new Date(cursor) } } : {}),
     };
     const numberLimit = Number(limit) || 10;
-    const transactions = await Transaction.find(getProfileScopedQuery(req, query))
+    const readQuery = getTransactionReadQuery(req, query);
+    const transactions = await Transaction.find(readQuery)
       .lean()
       .limit(numberLimit)
       .populate({ path: "type", select: "name", options: { lean: true } })
@@ -106,7 +127,7 @@ exports.getUserTransactionsV2 = async (req, res, next) => {
     const hasNextPage = transactions.length === numberLimit;
     const nextCursor = hasNextPage ? transactions[transactions.length - 1].date : null;
 
-    res.json({ data: transactions, nextCursor, hasNextPage, limit: numberLimit });
+    res.json({ data: transactions, nextCursor, hasNextPage, limit: numberLimit, scope: resolveViewScope(req) });
   } catch (err) {
     return res.send({ message: err.message });
   }
@@ -115,7 +136,7 @@ exports.getUserTransactionsV2 = async (req, res, next) => {
 exports.getUserTransactionById = async (req, res, next) => {
   try {
     const id = req.params.id;
-    const transactions = await Transaction.find(getProfileScopedQuery(req, { _id: id }))
+    const transactions = await Transaction.find(getTransactionReadQuery(req, { _id: id }))
       .populate({ path: "type", select: "name" })
       .populate({ path: "partner", select: "name" })
       .populate({ path: "category", select: "name" })
