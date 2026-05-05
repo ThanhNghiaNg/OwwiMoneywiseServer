@@ -194,7 +194,10 @@ exports.deleteTransaction = async (req, res, next) => {
     if (transaction && transaction.deletedCount) {
       return res.status(200).send({ message: "Deleted Transactions!" });
     }
-    return res.status(404).send({ message: "Invalid User, Profile, or Transaction!" });
+    return res.status(404).send({
+      code: "TRANSACTION_NOT_IN_ACTIVE_PROFILE",
+      message: "This transaction does not belong to the active profile. Switch profile to delete it.",
+    });
   } catch (err) {
     console.log(err);
     return res.send({ message: err.message });
@@ -214,7 +217,10 @@ exports.updateTransaction = async (req, res, next) => {
     const modifiedCount = result?.modifiedCount ?? result?.nModified ?? 0;
 
     if (!matchedCount) {
-      return res.status(404).send({ message: "Invalid User, Profile, or Transaction!" });
+      return res.status(404).send({
+        code: "TRANSACTION_NOT_IN_ACTIVE_PROFILE",
+        message: "This transaction does not belong to the active profile. Switch profile to update it.",
+      });
     }
 
     return res.status(201).send({ message: modifiedCount ? "Updated Transactions!" : "No changes applied." });
