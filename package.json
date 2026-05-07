@@ -8,7 +8,9 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "vercel-build": "echo hello",
-    "migrate:transaction-profiles": "node scripts/migrate-transaction-profiles.js"
+    "migrate:transaction-profiles": "node scripts/migrate-transaction-profiles.js",
+    "audit:transaction-profiles": "node scripts/audit-missing-createdByProfile.js",
+    "repair:transaction-profiles": "node scripts/repair-transaction-profile-snapshots.js"
   },
   "keywords": [],
   "author": "ThanhNghiaNg",
