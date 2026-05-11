@@ -99,6 +99,20 @@ async function getResolvedConfig(userId, month, year) {
     return { jars: previousConfig.jars, isDefault: false, month, year, inheritedFrom: { month: previousConfig.month, year: previousConfig.year } };
   }
 
+  const legacyConfig = await SixJarsConfig.findOne({
+    user: userId,
+    $or: [
+      { month: { $exists: false } },
+      { year: { $exists: false } },
+      { month: null },
+      { year: null },
+    ],
+  }).lean();
+
+  if (legacyConfig) {
+    return { jars: legacyConfig.jars, isDefault: false, month, year, inheritedFrom: { month: 0, year: 0 } };
+  }
+
   return { jars: DEFAULT_JARS, isDefault: true, month, year };
 }
 
