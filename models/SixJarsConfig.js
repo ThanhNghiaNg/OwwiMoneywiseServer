@@ -5,7 +5,7 @@ const sixJarItemSchema = Schema(
   {
     id: { type: String, required: true },
     name: { type: String, required: true },
-    targetPercent: { type: Number, required: true },
+    plannedAmount: { type: Number, required: true },
     categoryIds: [{ type: Schema.Types.ObjectId, ref: "Category", required: true }],
   },
   { _id: false }

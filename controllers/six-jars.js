@@ -4,19 +4,19 @@ const SixJarsConfig = require("../models/SixJarsConfig");
 const Transaction = require("../models/Transaction");
 
 const DEFAULT_JARS = [
-  { id: "necessities", name: "Thiết yếu", targetPercent: 55, categoryIds: [] },
-  { id: "education", name: "Giáo dục", targetPercent: 10, categoryIds: [] },
-  { id: "play", name: "Hưởng thụ", targetPercent: 10, categoryIds: [] },
-  { id: "financial-freedom", name: "Tự do tài chính", targetPercent: 10, categoryIds: [] },
-  { id: "give", name: "Cho đi", targetPercent: 5, categoryIds: [] },
-  { id: "long-term-saving", name: "Tiết kiệm dài hạn", targetPercent: 10, categoryIds: [] },
+  { id: "necessities", name: "Thiết yếu", plannedAmount: 0, categoryIds: [] },
+  { id: "education", name: "Giáo dục", plannedAmount: 0, categoryIds: [] },
+  { id: "play", name: "Hưởng thụ", plannedAmount: 0, categoryIds: [] },
+  { id: "financial-freedom", name: "Tự do tài chính", plannedAmount: 0, categoryIds: [] },
+  { id: "give", name: "Cho đi", plannedAmount: 0, categoryIds: [] },
+  { id: "long-term-saving", name: "Tiết kiệm dài hạn", plannedAmount: 0, categoryIds: [] },
 ];
 
 function normalizeJar(jar) {
   return {
     id: String(jar.id || "").trim(),
     name: String(jar.name || "").trim(),
-    targetPercent: Number(jar.targetPercent || 0),
+    plannedAmount: Number(jar.plannedAmount || 0),
     categoryIds: Array.isArray(jar.categoryIds) ? jar.categoryIds.map((id) => String(id)) : [],
   };
 }
@@ -32,8 +32,8 @@ async function validateConfig(userId, jars) {
     return "Mỗi hũ phải có id và name hợp lệ!";
   }
 
-  if (normalizedJars.some((jar) => !Number.isFinite(jar.targetPercent) || jar.targetPercent < 0)) {
-    return "targetPercent không hợp lệ!";
+  if (normalizedJars.some((jar) => !Number.isFinite(jar.plannedAmount) || jar.plannedAmount < 0)) {
+    return "plannedAmount không hợp lệ!";
   }
 
   const allCategoryIds = normalizedJars.flatMap((jar) => jar.categoryIds);
@@ -185,11 +185,11 @@ exports.getMonthStatistic = async (req, res) => {
     const jars = resolved.jars.map((rawJar) => {
       const jar = normalizeJar(rawJar);
       const totalSpent = jar.categoryIds.reduce((sum, categoryId) => sum + (outcomeByCategoryMap[categoryId] || 0), 0);
-      const expectedSpend = totalIncome * (jar.targetPercent / 100);
-      const allowedToDate = daysInMonth > 0 ? (expectedSpend / daysInMonth) * passedDays : expectedSpend;
+      const plannedAmount = jar.plannedAmount;
+      const allowedToDate = daysInMonth > 0 ? (plannedAmount / daysInMonth) * passedDays : plannedAmount;
 
       let tone = "default";
-      if (totalSpent > expectedSpend) {
+      if (totalSpent > plannedAmount) {
         tone = "danger";
       } else if (totalSpent > allowedToDate) {
         tone = "warning";
@@ -198,10 +198,9 @@ exports.getMonthStatistic = async (req, res) => {
       return {
         id: jar.id,
         name: jar.name,
-        targetPercent: jar.targetPercent,
+        plannedAmount,
         categoryIds: jar.categoryIds,
         totalSpent,
-        expectedSpend,
         allowedToDate,
         tone,
       };
