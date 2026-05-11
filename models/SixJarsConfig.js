@@ -13,7 +13,9 @@ const sixJarItemSchema = Schema(
 
 const sixJarsConfigSchema = Schema(
   {
-    user: { type: Schema.Types.ObjectId, required: true, ref: "User", unique: true },
+    user: { type: Schema.Types.ObjectId, required: true, ref: "User" },
+    year: { type: Number, required: true },
+    month: { type: Number, required: true },
     jars: {
       type: [sixJarItemSchema],
       validate: {
@@ -28,6 +30,6 @@ const sixJarsConfigSchema = Schema(
   }
 );
 
-sixJarsConfigSchema.index({ user: 1 }, { unique: true, background: true });
+sixJarsConfigSchema.index({ user: 1, year: 1, month: 1 }, { unique: true, background: true });
 
 module.exports = mongoose.model("SixJarsConfig", sixJarsConfigSchema);

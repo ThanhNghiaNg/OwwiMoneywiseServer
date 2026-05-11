@@ -147,7 +147,26 @@ app.use("/v2/transactions", transactionRoutesV2);
 app.use("/v2/partners", partnerRoutesV2);
 app.use("/v2/categories", categoryRoutesV2);
 
-mongoose.connect(MONGO_URI).then(() => {
+async function ensureSixJarsIndexes() {
+  try {
+    const collection = mongoose.connection.collection("sixjarsconfigs");
+    const indexes = await collection.indexes();
+    const legacyUserIndex = indexes.find((index) => index.name === "user_1" && index.unique);
+
+    if (legacyUserIndex) {
+      await collection.dropIndex("user_1");
+      console.log("Dropped legacy sixjarsconfigs index: user_1");
+    }
+  } catch (error) {
+    if (error && error.codeName === "NamespaceNotFound") {
+      return;
+    }
+    console.log("ensureSixJarsIndexes error", error);
+  }
+}
+
+mongoose.connect(MONGO_URI).then(async () => {
+  await ensureSixJarsIndexes();
   app.listen(PORT || 5001);
   console.log("Server is running...");
 });
