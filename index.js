@@ -15,6 +15,7 @@ const partnerRoutes = require("./routes/partner");
 const profileRoutes = require("./routes/profile");
 const cronRoutes = require("./routes/cron");
 const isAuthUser = require("./middlewares/isAuthUser");
+const sixJarsRoutes = require("./routes/six-jars");
 
 const transactionRoutesV2 = require("./routes/transaction-v2");
 const partnerRoutesV2 = require("./routes/partner-v2");
@@ -139,6 +140,7 @@ app.use("/cron", cronRoutes);
 app.use("/transaction", transactionRoutes);
 app.use("/partner", partnerRoutes);
 app.use("/profiles", profileRoutes);
+app.use("/six-jars", sixJarsRoutes);
 
 // v2
 app.use("/v2/transactions", transactionRoutesV2);
