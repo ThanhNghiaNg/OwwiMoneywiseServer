@@ -21,6 +21,26 @@ function normalizeJar(jar) {
   };
 }
 
+function getRequestedMonthYear(req) {
+  const now = new Date();
+  return {
+    month: Number(req.query.month || req.body?.month || now.getMonth() + 1),
+    year: Number(req.query.year || req.body?.year || now.getFullYear()),
+  };
+}
+
+function validateMonthYear(month, year) {
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    return "Month không hợp lệ!";
+  }
+
+  if (!Number.isInteger(year) || year < 2000 || year > 3000) {
+    return "Year không hợp lệ!";
+  }
+
+  return null;
+}
+
 async function validateConfig(userId, jars) {
   if (!Array.isArray(jars) || jars.length !== 6) {
     return "Config phải có đúng 6 hũ!";
@@ -61,12 +81,25 @@ async function validateConfig(userId, jars) {
   return null;
 }
 
-async function getResolvedConfig(userId) {
-  const config = await SixJarsConfig.findOne({ user: userId }).lean();
-  if (!config) {
-    return { jars: DEFAULT_JARS, isDefault: true };
+async function getResolvedConfig(userId, month, year) {
+  const config = await SixJarsConfig.findOne({ user: userId, month, year }).lean();
+  if (config) {
+    return { jars: config.jars, isDefault: false, month, year };
   }
-  return { jars: config.jars, isDefault: false };
+
+  const previousConfig = await SixJarsConfig.findOne({
+    user: userId,
+    $or: [
+      { year: { $lt: year } },
+      { year, month: { $lt: month } },
+    ],
+  }).sort({ year: -1, month: -1 }).lean();
+
+  if (previousConfig) {
+    return { jars: previousConfig.jars, isDefault: false, month, year, inheritedFrom: { month: previousConfig.month, year: previousConfig.year } };
+  }
+
+  return { jars: DEFAULT_JARS, isDefault: true, month, year };
 }
 
 function getMonthBounds(year, month) {
@@ -79,7 +112,14 @@ function getMonthBounds(year, month) {
 exports.getConfig = async (req, res) => {
   try {
     const userId = req.session.user._id;
-    const resolved = await getResolvedConfig(userId);
+    const { month, year } = getRequestedMonthYear(req);
+    const monthYearError = validateMonthYear(month, year);
+
+    if (monthYearError) {
+      return res.status(422).send({ message: monthYearError });
+    }
+
+    const resolved = await getResolvedConfig(userId, month, year);
     return res.send(resolved);
   } catch (err) {
     console.log(err);
@@ -90,6 +130,13 @@ exports.getConfig = async (req, res) => {
 exports.upsertConfig = async (req, res) => {
   try {
     const userId = req.session.user._id;
+    const { month, year } = getRequestedMonthYear(req);
+    const monthYearError = validateMonthYear(month, year);
+
+    if (monthYearError) {
+      return res.status(422).send({ message: monthYearError });
+    }
+
     const jars = Array.isArray(req.body?.jars) ? req.body.jars : [];
     const validationError = await validateConfig(userId, jars);
 
@@ -103,12 +150,12 @@ exports.upsertConfig = async (req, res) => {
     }));
 
     const config = await SixJarsConfig.findOneAndUpdate(
-      { user: userId },
-      { $set: { jars: normalizedJars, user: userId } },
+      { user: userId, month, year },
+      { $set: { jars: normalizedJars, user: userId, month, year } },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     ).lean();
 
-    return res.send({ jars: config.jars, message: "Six jars config saved successfully!" });
+    return res.send({ jars: config.jars, month, year, message: "Six jars config saved successfully!" });
   } catch (err) {
     console.log(err);
     return res.status(500).send({ message: err.message });
@@ -118,19 +165,14 @@ exports.upsertConfig = async (req, res) => {
 exports.getMonthStatistic = async (req, res) => {
   try {
     const userId = req.session.user._id;
-    const now = new Date();
-    const month = Number(req.query.month || now.getMonth() + 1);
-    const year = Number(req.query.year || now.getFullYear());
+    const { month, year } = getRequestedMonthYear(req);
+    const monthYearError = validateMonthYear(month, year);
 
-    if (!Number.isInteger(month) || month < 1 || month > 12) {
-      return res.status(422).send({ message: "Month không hợp lệ!" });
+    if (monthYearError) {
+      return res.status(422).send({ message: monthYearError });
     }
 
-    if (!Number.isInteger(year) || year < 2000 || year > 3000) {
-      return res.status(422).send({ message: "Year không hợp lệ!" });
-    }
-
-    const resolved = await getResolvedConfig(userId);
+    const resolved = await getResolvedConfig(userId, month, year);
     const { startOfMonth, endOfMonth } = getMonthBounds(year, month);
 
     const outcomeByCategory = await Transaction.aggregate([
@@ -173,6 +215,7 @@ exports.getMonthStatistic = async (req, res) => {
 
     const totalIncome = incomeResult[0]?.totalAmount || 0;
     const daysInMonth = new Date(year, month, 0).getDate();
+    const now = new Date();
     const passedDays = year === now.getFullYear() && month === now.getMonth() + 1
       ? now.getDate()
       : daysInMonth;
@@ -214,6 +257,7 @@ exports.getMonthStatistic = async (req, res) => {
       daysInMonth,
       passedDays,
       isDefaultConfig: resolved.isDefault,
+      inheritedFrom: resolved.inheritedFrom || null,
       jars,
     });
   } catch (err) {
