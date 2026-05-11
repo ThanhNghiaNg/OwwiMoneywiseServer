@@ -36,11 +36,6 @@ async function validateConfig(userId, jars) {
     return "targetPercent không hợp lệ!";
   }
 
-  const totalPercent = normalizedJars.reduce((sum, jar) => sum + jar.targetPercent, 0);
-  if (Math.round(totalPercent * 100) / 100 !== 100) {
-    return "Tổng phần trăm của 6 hũ phải bằng 100!";
-  }
-
   const allCategoryIds = normalizedJars.flatMap((jar) => jar.categoryIds);
   const uniqueCategoryIds = new Set(allCategoryIds);
   if (uniqueCategoryIds.size !== allCategoryIds.length) {
