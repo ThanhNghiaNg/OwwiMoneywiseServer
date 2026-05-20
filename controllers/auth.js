@@ -310,6 +310,13 @@ exports.postGoogleLink = async (req, res, next) => {
     }
 
     const user = await User.findById(req.session.user._id);
+
+    if (user.googleId && user.googleId !== googleProfile.googleId) {
+      return res.status(409).send({
+        message: "This account is already linked with another Google account.",
+      });
+    }
+
     user.googleId = googleProfile.googleId;
     user.googleEmail = googleProfile.email;
     user.googleAvatar = googleProfile.picture;
