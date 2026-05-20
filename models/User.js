@@ -9,6 +9,8 @@ const userSchema = Schema(
     email: { type: String, require: true },
     phone: { type: String, require: true },
     address: { type: String, require: false },
+    passwordResetToken: { type: String, require: false },
+    passwordResetExpires: { type: Date, require: false },
     isAdmin: { type: Boolean, require: true },
   },
   { timestamp: true }

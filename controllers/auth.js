@@ -4,6 +4,12 @@ const Type = require("../models/Type");
 const Profile = require("../models/Profile");
 const bcrypt = require("bcryptjs");
 const { validationResult } = require("express-validator/check");
+const {
+  createResetToken,
+  hashResetToken,
+  getResetUrl,
+  sendPasswordResetEmail,
+} = require("../utils/passwordReset");
 
 async function buildAuthPayload(user, activeProfileId) {
   const profiles = await Profile.find({ user: user._id })
@@ -162,6 +168,71 @@ exports.postRegister = async (req, res, next) => {
     if (session) {
       session.endSession();
     }
+  }
+};
+
+exports.postForgotPassword = async (req, res, next) => {
+  const { email } = req.body;
+
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).send({ message: errors.array()[0].msg });
+  }
+
+  try {
+    const lookup = String(email).toLowerCase();
+    const user = await User.findOne({
+      $or: [
+        { email: lookup },
+        { username: lookup },
+      ],
+    });
+
+    if (user) {
+      const { token, hashedToken, expiresAt } = createResetToken();
+      user.passwordResetToken = hashedToken;
+      user.passwordResetExpires = expiresAt;
+      await user.save();
+
+      const resetUrl = getResetUrl(token);
+      await sendPasswordResetEmail(user, resetUrl);
+    }
+
+    return res.send({
+      message: "If an account exists, password reset instructions have been sent.",
+    });
+  } catch (err) {
+    return res.status(500).send({ message: err.message });
+  }
+};
+
+exports.postResetPassword = async (req, res, next) => {
+  const { token, password } = req.body;
+
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).send({ message: errors.array()[0].msg });
+  }
+
+  try {
+    const hashedToken = hashResetToken(token);
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(422).send({ message: "Reset link is invalid or expired!" });
+    }
+
+    user.password = await bcrypt.hash(password, 12);
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    return res.send({ message: "Password reset successfully!" });
+  } catch (err) {
+    return res.status(500).send({ message: err.message });
   }
 };
 
