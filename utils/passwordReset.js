@@ -21,11 +21,11 @@ function getResetUrl(token) {
 }
 
 async function sendPasswordResetEmail(user, resetUrl) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
+  const { SMTP_USER, SMTP_PASS } = process.env;
   const subject = "Reset your OwwiMoney password";
   const text = `Use this link to reset your password. It expires in 1 hour.\n\n${resetUrl}`;
 
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
+  if (!SMTP_USER || !SMTP_PASS) {
     console.log(`[password-reset] Reset link for ${user.email || user.username}: ${resetUrl}`);
     return { sent: false, resetUrl };
   }
@@ -38,8 +38,8 @@ async function sendPasswordResetEmail(user, resetUrl) {
     },
   });
 
-  await transporter.sendMail({
-    from: SMTP_FROM || SMTP_USER,
+  const res = await transporter.sendMail({
+    from: SMTP_USER,
     to: user.email || user.username,
     subject,
     text,
