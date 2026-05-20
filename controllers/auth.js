@@ -309,6 +309,13 @@ exports.postGoogleLink = async (req, res, next) => {
       return res.status(409).send({ message: "Email is already used by another account." });
     }
 
+    const accountEmails = [user.email, user.username].filter(Boolean).map((value) => String(value).toLowerCase());
+    if (!accountEmails.includes(googleProfile.email)) {
+      return res.status(409).send({
+        message: "Google email must match this account email or username.",
+      });
+    }
+
     if (user.googleId && user.googleId !== googleProfile.googleId) {
       return res.status(409).send({
         message: "This account is already linked with another Google account.",
@@ -325,6 +332,38 @@ exports.postGoogleLink = async (req, res, next) => {
     const payload = await buildAuthPayload(user, req.session.activeProfileId);
 
     return res.send({ message: "Google account linked successfully!", ...payload });
+  } catch (err) {
+    return res.status(500).send({ message: err.message });
+  }
+};
+
+exports.postGoogleUnlink = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.session.user._id);
+
+    if (!user) {
+      return res.status(404).send({ message: "User not found." });
+    }
+
+    if (!user.googleId) {
+      return res.send({ message: "Google account is not linked." });
+    }
+
+    if (!user.password) {
+      return res.status(409).send({
+        message: "Set password before unlinking Google.",
+      });
+    }
+
+    user.googleId = undefined;
+    user.googleEmail = undefined;
+    user.googleAvatar = undefined;
+    await user.save();
+
+    req.session.user = user;
+    const payload = await buildAuthPayload(user, req.session.activeProfileId);
+
+    return res.send({ message: "Google account unlinked successfully!", ...payload });
   } catch (err) {
     return res.status(500).send({ message: err.message });
   }

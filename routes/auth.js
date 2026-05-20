@@ -85,6 +85,8 @@ router.post(
   authController.postGoogleLink
 );
 
+router.post("/google/unlink", isAuth, authController.postGoogleUnlink);
+
 router.post("/logout", isAuth, authController.postLogout);
 
 module.exports = router;
