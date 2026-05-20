@@ -4,6 +4,7 @@ const Type = require("../models/Type");
 const Profile = require("../models/Profile");
 const bcrypt = require("bcryptjs");
 const { validationResult } = require("express-validator/check");
+const { verifyGoogleCredential } = require("../utils/googleAuth");
 const {
   createResetToken,
   hashResetToken,
@@ -22,6 +23,8 @@ async function buildAuthPayload(user, activeProfileId) {
     fullName: user.fullName,
     email: user.email,
     phone: user.phone,
+    googleLinked: !!user.googleId,
+    googleEmail: user.googleEmail,
     address: user.address,
     isAdmin: user.isAdmin,
   };
@@ -59,6 +62,18 @@ exports.getAuthenticated = async (req, res, next) => {
   }
 };
 
+function setLoginSession(req, user) {
+  req.session.isLoggedIn = true;
+  req.session.user = user;
+  req.session.sessionID = req.sessionID;
+  req.session.ua = req.headers["user-agent"];
+}
+
+async function createDefaultUserResources(userId, session) {
+  await Profile.create([{ user: userId, name: "Personal", isDefault: true, order: 0 }], { session });
+  await Type.create([{ name: "Income", user: userId }, { name: "Outcome", user: userId }], { session });
+}
+
 exports.postLogin = (req, res, next) => {
   const { username, password, role } = req.body;
 
@@ -76,10 +91,7 @@ exports.postLogin = (req, res, next) => {
 
       return bcrypt.compare(password, user.password).then(async (doMatch) => {
         if (doMatch) {
-          req.session.isLoggedIn = true;
-          req.session.user = user;
-          req.session.sessionID = req.sessionID;
-          req.session.ua = req.headers["user-agent"];
+          setLoginSession(req, user);
           if (user.isAdmin || role === (user.isAdmin ? "admin" : "user")) {
             const payload = await buildAuthPayload(user, req.session.activeProfileId);
 
@@ -140,25 +152,7 @@ exports.postRegister = async (req, res, next) => {
 
       const user = users[0];
 
-      await Profile.create(
-        [
-          {
-            user: user._id,
-            name: "Personal",
-            isDefault: true,
-            order: 0,
-          },
-        ],
-        { session }
-      );
-
-      await Type.create(
-        [
-          { name: "Income", user: user._id },
-          { name: "Outcome", user: user._id },
-        ],
-        { session }
-      );
+      await createDefaultUserResources(user._id, session);
     });
 
     return res.status(201).send({ message: "Register Successfully!" });
@@ -231,6 +225,145 @@ exports.postResetPassword = async (req, res, next) => {
     await user.save();
 
     return res.send({ message: "Password reset successfully!" });
+  } catch (err) {
+    return res.status(500).send({ message: err.message });
+  }
+};
+
+exports.postGoogleLogin = async (req, res, next) => {
+  try {
+    const googleProfile = await verifyGoogleCredential(req.body.credential);
+    let user = await User.findOne({ googleId: googleProfile.googleId });
+
+    if (!user) {
+      const existingEmailUser = await User.findOne({
+        $or: [{ email: googleProfile.email }, { username: googleProfile.email }],
+      });
+
+      if (existingEmailUser) {
+        return res.status(409).send({
+          message: "Email is already used. Please login with username/password and link Google in Settings.",
+        });
+      }
+
+      let session;
+      try {
+        session = await mongoose.startSession();
+        await session.withTransaction(async () => {
+          const users = await User.create(
+            [
+              {
+                username: googleProfile.email,
+                password: undefined,
+                fullName: googleProfile.fullName,
+                email: googleProfile.email,
+                phone: "",
+                googleId: googleProfile.googleId,
+                googleEmail: googleProfile.email,
+                googleAvatar: googleProfile.picture,
+                isAdmin: false,
+              },
+            ],
+            { session }
+          );
+
+          user = users[0];
+          await createDefaultUserResources(user._id, session);
+        });
+      } finally {
+        if (session) session.endSession();
+      }
+    }
+
+    setLoginSession(req, user);
+    const payload = await buildAuthPayload(user, req.session.activeProfileId);
+
+    return res.send({
+      message: "Successfully Login!",
+      token: user._id,
+      name: user.fullName,
+      role: user.role,
+      sessionToken: req.sessionID,
+      ...payload,
+    });
+  } catch (err) {
+    return res.status(500).send({ message: err.message });
+  }
+};
+
+exports.postGoogleLink = async (req, res, next) => {
+  try {
+    const googleProfile = await verifyGoogleCredential(req.body.credential);
+    const linkedUser = await User.findOne({ googleId: googleProfile.googleId });
+
+    if (linkedUser && String(linkedUser._id) !== String(req.session.user._id)) {
+      return res.status(409).send({ message: "This Google account is already linked to another user." });
+    }
+
+    const user = await User.findById(req.session.user._id);
+    const emailUser = await User.findOne({
+      $or: [{ email: googleProfile.email }, { username: googleProfile.email }],
+    });
+
+    if (emailUser && String(emailUser._id) !== String(user._id)) {
+      return res.status(409).send({ message: "Email is already used by another account." });
+    }
+
+    const accountEmails = [user.email, user.username].filter(Boolean).map((value) => String(value).toLowerCase());
+    if (!accountEmails.includes(googleProfile.email)) {
+      return res.status(409).send({
+        message: "Google email must match this account email or username.",
+      });
+    }
+
+    if (user.googleId && user.googleId !== googleProfile.googleId) {
+      return res.status(409).send({
+        message: "This account is already linked with another Google account.",
+      });
+    }
+
+    user.googleId = googleProfile.googleId;
+    user.googleEmail = googleProfile.email;
+    user.googleAvatar = googleProfile.picture;
+    if (!user.email) user.email = googleProfile.email;
+    await user.save();
+
+    req.session.user = user;
+    const payload = await buildAuthPayload(user, req.session.activeProfileId);
+
+    return res.send({ message: "Google account linked successfully!", ...payload });
+  } catch (err) {
+    return res.status(500).send({ message: err.message });
+  }
+};
+
+exports.postGoogleUnlink = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.session.user._id);
+
+    if (!user) {
+      return res.status(404).send({ message: "User not found." });
+    }
+
+    if (!user.googleId) {
+      return res.send({ message: "Google account is not linked." });
+    }
+
+    if (!user.password) {
+      return res.status(409).send({
+        message: "Set password before unlinking Google.",
+      });
+    }
+
+    user.googleId = undefined;
+    user.googleEmail = undefined;
+    user.googleAvatar = undefined;
+    await user.save();
+
+    req.session.user = user;
+    const payload = await buildAuthPayload(user, req.session.activeProfileId);
+
+    return res.send({ message: "Google account unlinked successfully!", ...payload });
   } catch (err) {
     return res.status(500).send({ message: err.message });
   }
