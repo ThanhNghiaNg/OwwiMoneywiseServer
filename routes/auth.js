@@ -57,6 +57,21 @@ router.post(
   authController.postRegister
 );
 
+router.post(
+  "/forgot-password",
+  [body("email", "Invalid Email!").isEmail()],
+  authController.postForgotPassword
+);
+
+router.post(
+  "/reset-password",
+  [
+    body("token", "Reset token is required!").isLength({ min: 1 }),
+    body("password", "Password must have at least 6 characters!").isLength({ min: 6 }),
+  ],
+  authController.postResetPassword
+);
+
 router.post("/logout", isAuth, authController.postLogout);
 
 module.exports = router;
