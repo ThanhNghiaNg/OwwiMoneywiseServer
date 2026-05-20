@@ -300,16 +300,14 @@ exports.postGoogleLink = async (req, res, next) => {
       return res.status(409).send({ message: "This Google account is already linked to another user." });
     }
 
+    const user = await User.findById(req.session.user._id);
     const emailUser = await User.findOne({
       $or: [{ email: googleProfile.email }, { username: googleProfile.email }],
-      _id: { $ne: req.session.user._id },
     });
 
-    if (emailUser) {
+    if (emailUser && String(emailUser._id) !== String(user._id)) {
       return res.status(409).send({ message: "Email is already used by another account." });
     }
-
-    const user = await User.findById(req.session.user._id);
 
     if (user.googleId && user.googleId !== googleProfile.googleId) {
       return res.status(409).send({
