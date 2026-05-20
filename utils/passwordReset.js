@@ -43,7 +43,26 @@ async function sendPasswordResetEmail(user, resetUrl) {
     to: user.email || user.username,
     subject,
     text,
-    html: `<p>Use this link to reset your password. It expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+    html: `
+      <div style="margin:0;padding:32px;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+        <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
+          <div style="padding:28px 32px;background:linear-gradient(135deg,#0284c7,#2563eb);text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:24px;line-height:1.3;">OwwiMoney</h1>
+            <p style="margin:8px 0 0;color:#dbeafe;font-size:14px;">Reset your password</p>
+          </div>
+          <div style="padding:32px;">
+            <p style="margin:0 0 18px;color:#374151;font-size:15px;line-height:1.6;">We received a request to reset your password. Click the button below to choose a new password.</p>
+            <p style="margin:28px 0;text-align:center;">
+              <a href="${resetUrl}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;font-weight:700;border-radius:12px;padding:14px 28px;font-size:15px;">Reset password</a>
+            </p>
+            <p style="margin:0 0 8px;color:#6b7280;font-size:13px;line-height:1.6;">If the button does not work, copy and paste this link into your browser:</p>
+            <p style="margin:0;word-break:break-all;font-size:13px;line-height:1.6;">
+              <a href="${resetUrl}" style="color:#2563eb;text-decoration:underline;">${resetUrl}</a>
+            </p>
+            <p style="margin:24px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">This link expires in 1 hour. If you did not request this, you can ignore this email.</p>
+          </div>
+        </div>
+      </div>`,
   });
 
   return { sent: true };
