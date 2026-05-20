@@ -72,6 +72,19 @@ router.post(
   authController.postResetPassword
 );
 
+router.post(
+  "/google",
+  [body("credential", "Google credential is required!").isLength({ min: 1 })],
+  authController.postGoogleLogin
+);
+
+router.post(
+  "/google/link",
+  isAuth,
+  [body("credential", "Google credential is required!").isLength({ min: 1 })],
+  authController.postGoogleLink
+);
+
 router.post("/logout", isAuth, authController.postLogout);
 
 module.exports = router;
